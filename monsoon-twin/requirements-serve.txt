@@ -1,0 +1,4 @@
+# Inference dependencies (the judge sandbox provides these; torch is added when LocalNet exists).
+numpy>=1.26
+fastapi>=0.110
+uvicorn>=0.27

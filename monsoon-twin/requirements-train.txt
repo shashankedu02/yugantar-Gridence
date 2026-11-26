@@ -1,0 +1,9 @@
+# Training / evaluation / tests (never needed by the judged server).
+-r requirements-serve.txt
+scipy>=1.11
+xarray>=2024.1
+netCDF4>=1.6
+pytest>=8.0
+requests>=2.31
+# The official kit (validator, scorer, repo scanner) is installed from the local folder, see DEVELOPMENT.md:
+#   pip install -e ..\yug-monsoon-kit-main

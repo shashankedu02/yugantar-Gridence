@@ -1,0 +1,11 @@
+numpy>=1.26
+requests
+
+[data]
+xarray
+netCDF4
+scipy
+
+[serve]
+fastapi
+uvicorn
