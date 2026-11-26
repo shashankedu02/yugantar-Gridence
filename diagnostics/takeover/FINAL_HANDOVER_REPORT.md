@@ -2,6 +2,8 @@
 
 27 Nov 2026, about 01:30 IST. Deadline 10:00 IST. Branch `integration/final-submission`, **local only: nothing has been pushed or merged.**
 
+> **Update after model activation.** LocalNet is now served, with the DAP of the same training run as fallback. `MODEL_ACTIVATION_REPORT.md` is current for the model, tests, performance and limitations. Where the sections below say DAP is served, give test counts or give DAP results, they describe the earlier release candidate. The classification is unchanged. Condition 3 is done; the others remain.
+
 ## Classification: **CONDITIONALLY READY**
 **The local release candidate works. The public repository does not yet contain it:** `main` on GitHub is still `e45c36d`, which serves a placeholder.
 
@@ -10,7 +12,7 @@
 |---|---|---|
 | 1 | Complete the **security action** given to you privately | Do this first |
 | 2 | **Push the branch and merge it into `main`** (steps below) | Otherwise the judged repository has no model (scan 6.5/15 even with all three work branches) |
-| 3 | **Decide the model** (`MODEL_SELECTION_DECISION.md`) | Largest effect on the score |
+| 3 | ~~Decide the model~~ **Done:** LocalNet activated | See `MODEL_ACTIVATION_REPORT.md` |
 | 4 | **Accept the label "not independently reproduced"** on scores in the brief and README, or have a second person re-run the comparison | CLAUDE.md's independence rule forbids quoting them without a second run |
 | 5 | **Add the team name** to `docs/brief/brief.html` and re-export the PDF; submit the PDF as the form requires | Not known to me, so not invented |
 | 6 | Confirm with the organisers: pre-event code is acceptable; shipping four 3-day input states is acceptable | Compliance risks I cannot settle |

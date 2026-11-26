@@ -14,9 +14,19 @@ This describes what the current build does. `DEMO_AND_JUDGING.md` is an earlier 
 1. **Case:** "Active monsoon". Say: these are 3 real input days; the forecast is computed now. Run. Point at the line above the map naming the model.
 2. **Time:** press Space to play, arrows to step. Switch variables with 1–6.
 3. **Cell:** click a cell: baseline against climatology.
-4. **Official shock:** Warm Bay of Bengal → Run → **D** for the difference. Step from day 1 to day 8 and read the energy chart caption: how much of the response is outside the shocked area.
+4. **Official shock:** change Case to **Weak monsoon spell**, then Warm Bay of Bengal → Run → **D** for the difference. Step from day 1 to day 8 and read the energy chart caption: how much of the response is outside the shocked area. Say why you changed case: on "Active monsoon" neither official shock spreads by the organisers' check (see the table below).
 5. **A judge's shock:** open **Custom shock**; choose variable, size and shape; for a blob use *Pick centre on map*. **Add to shock** → **Run**. Several components can be added.
 6. **Impact Lens:** read baseline, scenario and change; look at the daily chart, not only the total; open one "ⓘ method" and read the limitation aloud.
+
+## Which official shocks spread on the demo cases
+Measured with the organisers' propagation check on CPU-only PyTorch 2.15.0 and 2.6.0 (same result on both). All eight were non-zero, local on day 1 and within the stability limit. These four cases are not the frozen test windows. If a judge picks another case or shock, report what you see.
+
+| Case | Warm Bay of Bengal | Monsoon Stall |
+|---|---|---|
+| Active monsoon | does not spread | does not spread |
+| Weak monsoon spell | spreads | does not spread |
+| Pre-monsoon heat | spreads | spreads |
+| Winter | spreads | does not spread |
 
 ## What to say about shocks (LocalNet)
 "This is a trained local network. Its response starts where the shock is and can spread. It is not verified physics. In our local tests the warm-ocean shock spread in 6 of 6 windows, the monsoon-stall shock in only 2 of 6, and in one warm-ocean window a small temperature shock removed a heavy rain event at one cell." Do not say which way or how fast a response travels: we have not measured that.

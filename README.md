@@ -124,6 +124,8 @@ Measured on a Windows laptop (i5-13450HX) with the server restricted to 4 logica
 | 30-step request, slowest of 12 | 329 ms | 354 ms | |
 | Peak memory (working set) of the server process | 262 MB | 241 MB | 6 GB |
 
+A second run on the same builds, mixing null shocks, both official shocks and forced fallbacks, had one 10-step baseline call of **191 ms** (2.6.0+cpu), the slowest 10-step call measured; its peak working set was 251 MB (2.15.0) and 228 MB (2.6.0). The frozen validation windows and all 12 shock cases give the same pass and fail results on both builds.
+
 On four demo cases, 2.15.0+cpu gave forecasts bit-identical to the 2.14.1 build used in training (run on the CPU); 2.6.0+cpu differed by at most 0.00004 standard deviations over 10 days and 0.0005 over 30. Each build is deterministic. Older PyTorch releases are untested. The server made no outbound connection attempt and ran from a copy of the repository in which writing was denied.
 
 ## Tests

@@ -1,6 +1,6 @@
 # Model selection: DAP or LocalNet
 
-27 Nov 2026. **Current state: DAP is served. LocalNet is NOT activated. Activation needs the owner's approval.**
+27 Nov 2026. **Update: the owner approved activation and LocalNet is now served** (see `MODEL_ACTIVATION_REPORT.md`). The text below is the decision record as written before that approval.
 
 No training, tuning or architecture change was made. The frozen windows were not changed. 2020–2021 data was not used.
 
