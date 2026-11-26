@@ -1,0 +1,9 @@
+# Same line endings on every machine (the team uses Windows; the judge runs Linux).
+* text=auto eol=lf
+*.nc binary
+*.npz binary
+*.pt binary
+*.whl binary
+*.png binary
+*.jpg binary
+*.woff2 binary

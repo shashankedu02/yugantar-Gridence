@@ -1,0 +1,39 @@
+# data: never commit climate data (repo-scan warns on each .nc; archives > 400 days are critical)
+data/
+*.nc
+*.nc4
+*.grib
+*.grib2
+*.zarr/
+# experiment outputs (only release candidates go to weights/)
+runs/
+eval/cache/
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+# os / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# caches anywhere (note: the repo scanner ignores .gitignore, so always scan a clean git export)
+cache/
+**/cache/
+*.cache.npy
+*.cache.npz
+.env
+.env.*
+!.env.example
+# test caches
+.pytest_cache/
+# build / tooling leftovers
+*.egg-info/
+build/
+dist/
+*.log
+.coverage
+node_modules/
