@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MonsoonTwin Console</title>
+  <!-- W3-owned stylesheets (loaded if present; fallback styles below keep core UI usable offline) -->
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <style id="w2-fallback-styles">
+    :root {
+      --mt-bg: #0b1220;
+      --mt-surface: #111a2b;
+      --mt-surface-2: #162238;
+      --mt-border: #1f2a3d;
+      --mt-text: #e6edf7;
+      --mt-muted: #93a4be;
+      --mt-teal: #2ec4b6;
+      --mt-amber: #f4a261;
+      --mt-danger: #ef5350;
+      --mt-warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--mt-bg);
+      color: var(--mt-text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .mt-topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--mt-surface);
+      border-bottom: 1px solid var(--mt-border);
+    }
+    .mt-brand { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
+    .mt-topbar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .mt-input, .mt-select, .mt-btn {
+      background: var(--mt-surface-2);
+      color: var(--mt-text);
+      border: 1px solid var(--mt-border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .mt-btn { cursor: pointer; }
+    .mt-btn:hover:not(:disabled) { border-color: var(--mt-teal); }
+    .mt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .mt-btn-primary { background: var(--mt-teal); color: #051319; border-color: var(--mt-teal); font-weight: 600; }
+    .mt-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--mt-border);
+      background: var(--mt-surface-2);
+    }
+    .mt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mt-muted); display: inline-block; }
+    .mt-dot.ready { background: var(--mt-teal); }
+    .mt-dot.error { background: var(--mt-danger); }
+    .mt-dot.loading { background: var(--mt-amber); }
+    .mt-banners { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+    .mt-banner {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--mt-border);
+      background: var(--mt-surface);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .mt-banner-warn { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.12); color: #fde68a; }
+    .mt-banner-error { border-color: rgba(239, 83, 80, 0.6); background: rgba(239, 83, 80, 0.14); color: #fecaca; }
+    .mt-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .mt-badge-unvalidated { background: rgba(244, 162, 97, 0.2); color: var(--mt-amber); border: 1px solid var(--mt-amber); }
+    .mt-badge-synthetic { background: rgba(46, 196, 182, 0.16); color: var(--mt-teal); border: 1px solid var(--mt-teal); }
+    .mt-layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 300px;
+      gap: 12px;
+      padding: 12px 16px;
+    }
+    .mt-panel {
+      background: var(--mt-surface);
+      border: 1px solid var(--mt-border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .mt-panel h2 { margin: 0 0 8px; font-size: 14px; color: var(--mt-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .mt-stage-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .mt-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mt-tab[aria-pressed="true"] { border-color: var(--mt-teal); background: rgba(46, 196, 182, 0.18); }
+    .mt-canvas-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #070c16;
+      border: 1px solid var(--mt-border);
+      border-radius: 6px;
+      min-height: 360px;
+      overflow: hidden;
+    }
+    #map-canvas { max-width: 100%; height: auto; display: block; }
+    .mt-dock {
+      margin: 0 16px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .mt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .mt-muted { color: var(--mt-muted); }
+    .hidden { display: none !important; }
+    @media (max-width: 1180px) {
+      .mt-layout { grid-template-columns: 240px minmax(0, 1fr); }
+      .mt-right-rail { grid-column: 1 / -1; }
+    }
+    @media (max-width: 780px) {
+      .mt-layout { grid-template-columns: 1fr; }
+      .mt-dock { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="mt-topbar">
+    <div class="mt-topbar-controls">
+      <span class="mt-brand">MonsoonTwin Console</span>
+      <span id="synthetic-badge" class="mt-badge mt-badge-synthetic">SYNTHETIC TEST INPUT</span>
+      <span id="unvalidated-badge" class="mt-badge mt-badge-unvalidated">Unvalidated</span>
+    </div>
+    <div class="mt-topbar-controls">
+      <label for="case-select" class="mt-muted">Case:</label>
+      <select id="case-select" class="mt-select" aria-label="Initial state case">
+        <option value="synthetic">SYNTHETIC TEST INPUT (Browser)</option>
+      </select>
+      <label for="api-base-input" class="mt-muted">API:</label>
+      <input id="api-base-input" class="mt-input mt-mono" type="url" value="http://localhost:8000" aria-label="API base URL" />
+      <button id="api-apply-btn" class="mt-btn" type="button">Connect</button>
+      <span id="api-status-pill" class="mt-pill" role="status" aria-live="polite">
+        <span id="api-status-dot" class="mt-dot"></span>
+        <span id="api-status-text">Checking...</span>
+      </span>
+      <span id="queue-status-pill" class="mt-pill mt-mono hidden">Queue: idle</span>
+    </div>
+  </header>
+
+  <section class="mt-banners" aria-label="System notices">
+    <div id="model-banner"></div>
+    <div id="error-banner" class="mt-banner mt-banner-error hidden" role="alert">
+      <span id="error-banner-text"></span>
+      <button id="error-dismiss-btn" class="mt-btn" type="button">Dismiss</button>
+    </div>
+  </section>
+
+  <main class="mt-layout">
+    <aside class="mt-panel mt-left-rail" aria-label="Scenario builder">
+      <h2>Scenario &amp; Run</h2>
+      <div id="scenario-controls">
+        <p class="mt-muted">Scenario controls will initialize in Stage 2B.</p>
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="run-btn" class="mt-btn mt-btn-primary" type="button" disabled>Run Simulation</button>
+        <button id="clear-shock-btn" class="mt-btn" type="button" disabled>Clear Shock</button>
+      </div>
+    </aside>
+
+    <section class="mt-panel mt-stage" aria-label="Forecast map stage">
+      <div class="mt-stage-header">
+        <div class="mt-tabs" role="group" aria-label="Forecast view">
+          <button class="mt-btn mt-tab" data-view="baseline" aria-pressed="true" type="button">Baseline</button>
+          <button class="mt-btn mt-tab" data-view="scenario" aria-pressed="false" type="button">Scenario</button>
+          <button class="mt-btn mt-tab" data-view="difference" aria-pressed="false" type="button">Difference</button>
+        </div>
+        <div class="mt-tabs" id="variable-selector" role="group" aria-label="Weather variable"></div>
+      </div>
+
+      <div class="mt-canvas-wrap">
+        <canvas id="map-canvas" width="576" height="512" aria-label="India 1-degree weather grid"></canvas>
+      </div>
+
+      <div id="map-hover-readout" class="mt-mono mt-muted" style="margin-top: 8px;">Hover or click a grid cell after running a simulation.</div>
+      <div id="legend-container" style="margin-top: 8px;"></div>
+
+      <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button id="play-btn" class="mt-btn" type="button" disabled>Play</button>
+        <label for="day-slider" class="mt-muted">Lead Day:</label>
+        <input id="day-slider" type="range" min="1" max="10" value="1" disabled style="flex: 1; min-width: 140px;" />
+        <span id="day-label" class="mt-mono">Day 1 / 10</span>
+      </div>
+    </section>
+
+    <aside class="mt-panel mt-right-rail" aria-label="Metadata and Impact Lens">
+      <h2>Server &amp; Metadata</h2>
+      <div id="meta-summary" class="mt-mono">Connecting to server...</div>
+      <h2 style="margin-top: 14px;">Monsoon Impact Lens</h2>
+      <div id="impact-container" class="mt-muted">Waiting for rollout / climatology.</div>
+    </aside>
+  </main>
+
+  <section class="mt-dock" aria-label="Charts and run log">
+    <div class="mt-panel">
+      <h2>Cell Time Series</h2>
+      <div id="series-chart-container" class="mt-muted">Click a grid cell to inspect its rollout.</div>
+    </div>
+    <div class="mt-panel">
+      <h2>Shock Energy vs Distance &amp; Run Log</h2>
+      <div id="energy-chart-container" class="mt-muted">Run a baseline + scenario to inspect shock spread.</div>
+      <div id="run-log" class="mt-mono mt-muted" style="margin-top: 8px;"></div>
+    </div>
+  </section>
+
+  <!-- W2 application entry point: app.js wires all W2 modules and dynamically imports W3 ui/ modules. -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
