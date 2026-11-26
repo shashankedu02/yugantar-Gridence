@@ -4,8 +4,10 @@
  *   - renderSeries(el, data, options?)
  *   - renderEnergyByDistance(el, data, options?)
  * Pure presentational ES module using dependency-free SVG.
+ * Strict null/undefined/NaN handling: breaks paths at missing points, never interpolates across gaps.
  */
 
+import { toFiniteNumber } from "./colormap.js";
 export { renderEnergyByDistance } from "./energy.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -27,26 +29,35 @@ function seriesColor(name, idx) {
   return idx === 1 ? "#F4A261" : "#94A3B8";
 }
 
-function buildSegmentedPath(values, toX, toY) {
-  let d = "";
-  let penUp = true;
+function buildSegmentedPaths(values, toX, toY) {
+  const segments = [];
+  const isolatedPoints = [];
+  let current = [];
+
   for (let i = 0; i < values.length; i++) {
-    const v = Number(values[i]);
-    if (!Number.isFinite(v)) {
-      penUp = true;
+    const v = toFiniteNumber(values[i]);
+    if (v === null) {
+      if (current.length === 1) isolatedPoints.push(current[0]);
+      if (current.length >= 2) segments.push(current);
+      current = [];
       continue;
     }
-    const cmd = penUp ? "M" : "L";
-    d += `${d ? " " : ""}${cmd}${toX(i).toFixed(1)},${toY(v).toFixed(1)}`;
-    penUp = false;
+    current.push([toX(i), toY(v)]);
   }
-  return d;
+  if (current.length === 1) isolatedPoints.push(current[0]);
+  if (current.length >= 2) segments.push(current);
+
+  const d = segments
+    .map((seg) => seg.map(([x, y], idx) => `${idx === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" "))
+    .join(" ");
+
+  return { d, isolatedPoints };
 }
 
 /**
  * Render multi-series time series into `el`.
  * @param {HTMLElement} el
- * @param {{labels?: Array<string|number>, series?: Array<{name: string, values: number[], lower?: number[], upper?: number[]}>, unit?: string}} data
+ * @param {{labels?: Array<string|number>, series?: Array<{name: string, values: Array<number|null>, lower?: Array<number|null>, upper?: Array<number|null>}>, unit?: string}} data
  * @param {{activeIndex?: number}} [options]
  */
 export function renderSeries(el, data, options = {}) {
@@ -60,9 +71,9 @@ export function renderSeries(el, data, options = {}) {
   const allNums = [];
   for (const s of rawSeries) {
     if (!s || !Array.isArray(s.values)) continue;
-    for (const v of s.values) if (Number.isFinite(Number(v))) allNums.push(Number(v));
-    if (Array.isArray(s.lower)) for (const v of s.lower) if (Number.isFinite(Number(v))) allNums.push(Number(v));
-    if (Array.isArray(s.upper)) for (const v of s.upper) if (Number.isFinite(Number(v))) allNums.push(Number(v));
+    for (const v of s.values) { const n = toFiniteNumber(v); if (n !== null) allNums.push(n); }
+    if (Array.isArray(s.lower)) for (const v of s.lower) { const n = toFiniteNumber(v); if (n !== null) allNums.push(n); }
+    if (Array.isArray(s.upper)) for (const v of s.upper) { const n = toFiniteNumber(v); if (n !== null) allNums.push(n); }
   }
 
   const maxLen = Math.max(labels.length, ...rawSeries.map((s) => (Array.isArray(s?.values) ? s.values.length : 0)), 0);
@@ -100,62 +111,68 @@ export function renderSeries(el, data, options = {}) {
     "aria-label": `Time series chart${unit ? ` in ${unit}` : ""}`
   });
 
-  // Axes
   svg.appendChild(svgEl("line", { x1: padL, y1: padT, x2: padL, y2: padT + plotH, stroke: "#28364F", "stroke-width": 1 }));
   svg.appendChild(svgEl("line", { x1: padL, y1: padT + plotH, x2: padL + plotW, y2: padT + plotH, stroke: "#28364F", "stroke-width": 1 }));
 
-  // Y-axis min/max labels
   svg.appendChild(svgEl("text", { x: padL - 6, y: padT + 6, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace" }, maxV.toFixed(1)));
   svg.appendChild(svgEl("text", { x: padL - 6, y: padT + plotH, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace" }, minV.toFixed(1)));
 
-  // Active lead-day marker if provided
   if (Number.isInteger(options?.activeIndex) && options.activeIndex >= 0 && options.activeIndex < maxLen) {
     const ax = toX(options.activeIndex).toFixed(1);
     svg.appendChild(svgEl("line", { x1: ax, y1: padT, x2: ax, y2: padT + plotH, stroke: "#94A3B8", "stroke-dasharray": "3 3", "stroke-width": 1 }));
   }
 
-  // Unit label
   if (unit) {
     svg.appendChild(svgEl("text", { x: W - padR, y: 14, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace" }, unit));
   }
 
-  // Series lines & optional ±1σ bands
   let legendX = padL + 4;
   rawSeries.forEach((s, idx) => {
     if (!s || !Array.isArray(s.values)) return;
     const color = seriesColor(s.name, idx);
     const isClim = String(s.name || "").toLowerCase().includes("clim");
 
+    // Split ±1σ band at missing indices (no interpolation across gaps)
     if (Array.isArray(s.lower) && Array.isArray(s.upper)) {
-      const ptsTop = [];
-      const ptsBot = [];
       const len = Math.min(s.lower.length, s.upper.length);
-      for (let i = 0; i < len; i++) {
-        const lo = Number(s.lower[i]);
-        const hi = Number(s.upper[i]);
-        if (Number.isFinite(lo) && Number.isFinite(hi)) {
-          ptsTop.push(`${toX(i).toFixed(1)},${toY(hi).toFixed(1)}`);
-          ptsBot.unshift(`${toX(i).toFixed(1)},${toY(lo).toFixed(1)}`);
+      let top = [];
+      let bot = [];
+      const flushBand = () => {
+        if (top.length >= 2) {
+          svg.appendChild(svgEl("polygon", {
+            points: `${top.join(" ")} ${bot.join(" ")}`,
+            fill: color,
+            "fill-opacity": "0.14"
+          }));
         }
+        top = [];
+        bot = [];
+      };
+      for (let i = 0; i < len; i++) {
+        const lo = toFiniteNumber(s.lower[i]);
+        const hi = toFiniteNumber(s.upper[i]);
+        if (lo === null || hi === null) {
+          flushBand();
+          continue;
+        }
+        top.push(`${toX(i).toFixed(1)},${toY(hi).toFixed(1)}`);
+        bot.unshift(`${toX(i).toFixed(1)},${toY(lo).toFixed(1)}`);
       }
-      if (ptsTop.length >= 2) {
-        svg.appendChild(svgEl("polygon", {
-          points: `${ptsTop.join(" ")} ${ptsBot.join(" ")}`,
-          fill: color,
-          "fill-opacity": "0.14"
-        }));
-      }
+      flushBand();
     }
 
-    const pathD = buildSegmentedPath(s.values, toX, toY);
-    if (pathD) {
+    const { d, isolatedPoints } = buildSegmentedPaths(s.values, toX, toY);
+    if (d) {
       svg.appendChild(svgEl("path", {
-        d: pathD,
+        d,
         fill: "none",
         stroke: color,
         "stroke-width": isClim ? 1.5 : 2.2,
         "stroke-dasharray": isClim ? "4 3" : null
       }));
+    }
+    for (const [px, py] of isolatedPoints) {
+      svg.appendChild(svgEl("circle", { cx: px.toFixed(1), cy: py.toFixed(1), r: 3, fill: color }));
     }
 
     const labelText = String(s.name || `Series ${idx + 1}`);
@@ -169,7 +186,6 @@ export function renderSeries(el, data, options = {}) {
     legendX += Math.max(54, labelText.length * 7 + 14);
   });
 
-  // X-axis tick labels (first, middle, last)
   if (labels.length > 0) {
     const idxs = labels.length <= 3 ? labels.map((_, i) => i) : [0, Math.floor((labels.length - 1) / 2), labels.length - 1];
     for (const i of idxs) {
@@ -180,7 +196,7 @@ export function renderSeries(el, data, options = {}) {
         fill: "#8A99B3",
         "font-size": 10,
         "font-family": "monospace"
-      }, String(labels[i])));
+      }, String(labels[i] ?? "")));
     }
   }
 
