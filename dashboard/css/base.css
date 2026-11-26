@@ -1,0 +1,104 @@
+/* ==========================================================================
+   MonsoonTwin — Base Styles & Accessibility Primitives
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body.mt-body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--mt-bg-canvas);
+  background-image:
+    radial-gradient(ellipse 75% 50% at 50% 0%, rgba(46, 196, 182, 0.06), transparent 65%),
+    radial-gradient(ellipse 60% 45% at 85% 15%, rgba(244, 162, 97, 0.04), transparent 60%);
+  color: var(--mt-text-primary);
+  font-family: var(--mt-font-sans);
+  font-size: var(--mt-text-sm);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Tabular numeric alignment for all scientific figures */
+.mt-mono,
+.mt-num {
+  font-family: var(--mt-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accessible focus ring */
+:where(button, a, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--mt-border-focus);
+  outline-offset: 2px;
+}
+
+/* Screen-reader only helper */
+.mt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link */
+.mt-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: var(--mt-space-2);
+  z-index: 100;
+  padding: var(--mt-space-2) var(--mt-space-4);
+  background: var(--mt-accent-primary);
+  color: var(--mt-text-inverse);
+  font-weight: 600;
+  border-radius: var(--mt-radius-sm);
+  text-decoration: none;
+}
+
+.mt-skip-link:focus {
+  left: var(--mt-space-3);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--mt-bg-inset);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--mt-border-subtle);
+  border-radius: var(--mt-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mt-text-muted);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

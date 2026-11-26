@@ -1,0 +1,195 @@
+/* ==========================================================================
+   MonsoonTwin — Observatory Shell & Responsive Breakpoints
+   Targets: 1920x1080, 1366x768, 1024x768 (drawers <1200px), 390x844 (mobile)
+   ========================================================================== */
+
+.mt-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 100dvh;
+}
+
+/* Top Bar */
+.mt-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mt-space-3);
+  min-height: var(--mt-topbar-h);
+  padding: var(--mt-space-2) var(--mt-space-4);
+  background: var(--mt-bg-glass);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--mt-border-hairline);
+}
+
+/* Main 3-Column Observatory Workspace (>= 1200px) */
+.mt-workspace {
+  display: grid;
+  grid-template-columns: var(--mt-rail-left-w) minmax(0, 1fr) var(--mt-rail-right-w);
+  gap: var(--mt-space-3);
+  padding: var(--mt-space-3);
+  align-items: start;
+}
+
+.mt-rail {
+  background: var(--mt-bg-surface);
+  border: 1px solid var(--mt-border-hairline);
+  border-radius: var(--mt-radius-lg);
+  box-shadow: var(--mt-shadow-panel);
+  padding: var(--mt-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mt-space-3);
+}
+
+@media (min-width: 1200px) {
+  .mt-rail {
+    max-height: calc(100dvh - 116px);
+    overflow-y: auto;
+  }
+}
+
+.mt-stage {
+  background: var(--mt-bg-surface);
+  border: 1px solid var(--mt-border-hairline);
+  border-radius: var(--mt-radius-lg);
+  box-shadow: var(--mt-shadow-panel);
+  padding: var(--mt-space-3) var(--mt-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mt-space-2);
+  min-width: 0;
+}
+
+/* Bottom Dock */
+.mt-dock {
+  margin: 0 var(--mt-space-3) var(--mt-space-3);
+  background: var(--mt-bg-surface);
+  border: 1px solid var(--mt-border-hairline);
+  border-radius: var(--mt-radius-lg);
+  box-shadow: var(--mt-shadow-panel);
+  padding: var(--mt-space-3) var(--mt-space-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mt-space-3);
+}
+
+.mt-dock-log {
+  grid-column: 1 / -1;
+}
+
+.mt-drawer-backdrop {
+  display: none;
+}
+
+/* Laptop 1366x768 & compact height tuning */
+@media (max-width: 1440px) and (min-width: 1200px) {
+  :root {
+    --mt-rail-left-w: 260px;
+    --mt-rail-right-w: 280px;
+    --mt-topbar-h: 46px;
+  }
+
+  .mt-topbar {
+    padding: 6px var(--mt-space-3);
+  }
+
+  .mt-workspace {
+    gap: var(--mt-space-2);
+    padding: var(--mt-space-2) var(--mt-space-3);
+  }
+
+  .mt-rail {
+    padding: var(--mt-space-3);
+    gap: var(--mt-space-2);
+  }
+
+  .mt-stage {
+    padding: var(--mt-space-2) var(--mt-space-3);
+  }
+
+  .mt-dock {
+    margin: 0 var(--mt-space-3) var(--mt-space-2);
+    padding: var(--mt-space-2) var(--mt-space-3);
+    gap: var(--mt-space-2);
+  }
+}
+
+@media (max-height: 820px) and (min-width: 1200px) {
+  :root {
+    --mt-map-max-h: clamp(220px, 38vh, 360px);
+  }
+
+  .mt-chart-svg {
+    max-height: 110px;
+  }
+}
+
+/* Tablet & Small Laptop (< 1200px, e.g. 1024x768): Collapse rails into drawers */
+@media (max-width: 1199px) {
+  .mt-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mt-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: var(--mt-z-drawer);
+    width: min(340px, 88vw);
+    border-radius: 0;
+    overflow-y: auto;
+    transition: transform var(--mt-dur-panel) var(--mt-ease);
+  }
+
+  .mt-rail--left {
+    left: 0;
+    transform: translateX(-105%);
+    border-right: 1px solid var(--mt-border-subtle);
+  }
+
+  .mt-rail--right {
+    right: 0;
+    transform: translateX(105%);
+    border-left: 1px solid var(--mt-border-subtle);
+  }
+
+  .mt-rail.is-open {
+    transform: translateX(0);
+  }
+
+  .mt-drawer-backdrop.is-visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--mt-z-drawer) - 1);
+    background: rgba(5, 9, 17, 0.72);
+  }
+}
+
+/* Mobile (< 768px, e.g. 390x844): Stacked single column */
+@media (max-width: 767px) {
+  .mt-topbar {
+    flex-wrap: wrap;
+    padding: var(--mt-space-2) var(--mt-space-3);
+  }
+
+  .mt-workspace {
+    padding: var(--mt-space-2);
+    gap: var(--mt-space-2);
+  }
+
+  .mt-stage {
+    padding: var(--mt-space-3);
+  }
+
+  .mt-dock {
+    margin: 0 var(--mt-space-2) var(--mt-space-3);
+    padding: var(--mt-space-3);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mt-space-3);
+  }
+}
