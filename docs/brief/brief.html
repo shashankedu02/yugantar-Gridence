@@ -34,49 +34,50 @@
 <section class="page">
   <h1>MonsoonTwin: a live, offline digital twin of India's weather</h1>
   <div class="sub">Yugaantar DevForge 2026 · Track 2 "Multiverse of Monsoon" · github.com/shashankedu02/yugantar-monsoon-kit</div>
-  <div class="usp"><b>USP: a twin you can interrogate and audit.</b> Pick real input days, paint a shock, and compare two live forecasts. Every result is labelled with the model that produced it, and every limit is stated where it affects the answer. It runs offline on a laptop: a 10-day request took at most 59 ms on 4 processors.</div>
+  <div class="usp"><b>USP: a twin you can interrogate and audit.</b> Pick real input days, paint a shock, and compare two live forecasts. Every result is labelled with the model that produced it, and every limit is stated where it affects the answer. It runs offline on a laptop CPU: a 10-day request took at most 155 ms on 4 processors.</div>
 
   <h2>System architecture and technical approach</h2>
   <div class="flow">
     <div class="box">3 days × 6 variables<br>32 × 36 grid (1°), day of year,<br>optional shock delta</div><div class="arrow">→</div>
     <div class="box"><b>serve.py</b> (FastAPI)<br>validates, adds the delta to the<br>last day, clamps to limits</div><div class="arrow">→</div>
-    <div class="box"><b>Engine</b><br>served: DAP<br>optional: LocalNet, DAP fallback</div><div class="arrow">→</div>
+    <div class="box"><b>Engine</b><br>served: LocalNet C64<br>fallback: DAP</div><div class="arrow">→</div>
     <div class="box"><b>Dashboard</b> (static, separate)<br>map, difference, charts,<br>Impact Lens</div>
   </div>
   <p>A zero shock gives output bit-identical to no shock. A response header names the model that answered each request. No network or dataset is used at inference.</p>
 
   <h2>Model design</h2>
-  <p><b>Served: damped anomaly persistence (DAP).</b> For each variable and cell: <code>x(d+k) = clim(d+k) + φ^k · (x(d) − clim(d))</code>. Climatology is the 2005–2017 calendar-day mean with a 15-day circular smoothing; φ is the lag-1 least-squares coefficient on the same years, limited to 0–0.99. Re-fitting reproduces the shipped files byte for byte.</p>
-  <p><b>Candidate, not activated: LocalNet.</b> A 313,735-parameter residual CNN (3×3 stem, 4 blocks, 64 channels, per-cell normalisation, no down-sampling or global layers) predicting one-day changes, rain in log1p space; one-step training, then 2- and 4-step rollout fine-tuning on 2005–2015, choices made on 2016–2017.</p>
+  <p><b>Served: LocalNet C64</b>, a 313,735-parameter residual CNN (3×3 stem, 4 blocks, 64 channels, per-cell normalisation; no down-sampling or global layers, so one step uses only nearby cells). It reads the last 3 days, the target day's climatology, land–sea mask, orography and calendar, and predicts one-day changes (rain in log1p space). One-step training, then 2- and 4-step rollout fine-tuning on 2005–2015; choices made on 2016–2017.</p>
+  <p><b>Fallback: damped anomaly persistence (DAP)</b>, fitted on the same years: <code>x(d+k) = clim(d+k) + φ^k · (x(d) − clim(d))</code> per variable and cell. It answers if LocalNet cannot load or fails during a request; a non-finite step is replaced by one DAP step.</p>
 
   <h2>How drift and blur are limited</h2>
   <ul>
-    <li><b>Drift:</b> in DAP the anomaly can only shrink, so errors cannot accumulate into runaway values. Both models are clamped to physical limits every step (rain never negative); a non-finite LocalNet step is replaced by a DAP step.</li>
-    <li><b>Blur:</b> DAP relaxes to a daily climatology that keeps geographic structure. Day-8 spatial variance as a share of the real field: t2m 0.97, tp 0.41, u10 0.70, v10 0.68, msl 0.86, tcwv 0.90. Rain is the weakest and sits just above the 0.40 line.</li>
+    <li><b>Drift:</b> multi-step fine-tuning on the model's own outputs, change (residual) prediction, and physical limits applied every step (rain never negative). All outputs in the 2018–2019 windows were valid; this does not guarantee realism. With unrealistic synthetic inputs, rain reaches the 1000 mm/day safety limit.</li>
+    <li><b>Blur:</b> day-8 spatial variance as a share of the real field: t2m 0.99, u10 0.75, v10 0.77, msl 0.96, tcwv 0.94, but <b>rain only 0.27</b>, under the 0.40 line we aim to stay above. Rain is visibly smoothed by day 8.</li>
   </ul>
 
   <h2>Local validation: 2018–2019 (test years 2020–2021 unused)</h2>
   <table class="num">
-    <tr><th>46 forecast windows + 6 × 2 shock tests</th><th>DAP (served)</th><th>LocalNet (candidate)</th></tr>
-    <tr><td>Day-4 skill against persistence</td><td>+0.197</td><td>+0.249</td></tr>
-    <tr><td>RMSE-skill points (of 30) · heavy-rain points (of 15)</td><td>16.6 · 0.0</td><td>29.5 · 0.8</td></tr>
-    <tr><td>Anti-blur (of 10) · shock causality (of 15)</td><td>10.0 · 11.25</td><td>9.45 · 13.4</td></tr>
-    <tr><td>Shocks local on day 1 · spreading by days 4–8 · stable</td><td>12/12 · 0/12 · 12/12</td><td>12/12 · 8/12 · 11/12</td></tr>
+    <tr><th>46 forecast windows + 6 × 2 shock tests</th><th>LocalNet (served)</th><th>DAP (fallback)</th></tr>
+    <tr><td>Day-4 skill against persistence</td><td>+0.249</td><td>+0.196</td></tr>
+    <tr><td>RMSE-skill points (of 30) · heavy-rain points (of 15)</td><td>29.5 · 0.8</td><td>16.4 · 0.0</td></tr>
+    <tr><td>Anti-blur (of 10) · shock causality (of 15)</td><td>9.45 · 13.4</td><td>10.0 · 11.25</td></tr>
+    <tr><td>Shocks local on day 1 · stable</td><td>12/12 · 11/12</td><td>12/12 · 12/12</td></tr>
+    <tr><td>Shocks spreading outward: warm ocean · monsoon stall</td><td>6/6 · 2/6</td><td>0/6 · 0/6</td></tr>
   </table>
-  <div class="caveat"><b>Read with care:</b> measured by one team member with the organisers' scoring functions and <b>not independently reproduced by a second person</b>. This replicates 70 of the 100 points locally; it is not the competition score. The judge uses other windows and does not publish how it averages skill; the point values depend on that choice.</div>
+  <div class="caveat"><b>Read with care:</b> measured by one team member with the organisers' scoring functions and <b>not independently reproduced by a second person</b>. The points replicate 70 of the 100 locally (53.2 for LocalNet, 37.7 for the fallback); this is not the competition score. The judge uses other windows and does not publish how it averages skill; the point values depend on that choice.</div>
 
   <h2>Failure modes we know about</h2>
   <ul>
-    <li><b>DAP cannot spread a shock.</b> Cells and variables are independent: a wind or temperature shock cannot change rain or neighbouring cells.</li>
-    <li>DAP's error is slightly <b>worse than the better of persistence and climatology at days 4 and 8</b>; its day-1 edge is small (0.02–0.07). Heavy-rain skill is about zero.</li>
-    <li><b>LocalNet</b> (why it is not yet activated): monsoon-stall spreading passes only 2 of 6 windows; one stability failure; day-8 error worse than DAP on all variables; day-8 rain variance 0.27; unrealistic inputs drive rain into the 1000 mm/day clamp; not run on Linux.</li>
-    <li>Untested: the judge's hardware and Linux sandbox. The contract does not state the day-of-year base; we use 1 for 1 January.</li>
+    <li><b>Monsoon-stall shock:</b> spreads in only 2 of 6 windows; in the others the response outside the shocked area fades or stays too small. Cause not established.</li>
+    <li><b>One stability failure:</b> after a small warm-ocean shock (window starting 22 May 2018), day-6 rain in one cell fell from 57 to 7 mm/day (6.7 standard deviations; limit 5). A shock response is model behaviour, not verified physics.</li>
+    <li><b>Longer leads:</b> clearly ahead of persistence and climatology at day 1, mostly slightly at day 4 (not pressure), <b>behind both the better reference and DAP at day 8</b> on all six variables. Heavy-rain skill is near zero.</li>
+    <li>Moisture can reach exactly zero at some high-altitude cells. <b>Not run on Linux</b> or the judge's hardware. The contract does not state the day-of-year base; we use 1 for 1 January.</li>
   </ul>
 </section>
 
 <section class="page">
   <h1 style="font-size:13pt">Visualization and impact use case</h1>
-  <img src="figure-dashboard.png" alt="Dashboard showing the difference view of a custom rain shock and the Impact Lens cards">
+  <img src="figure-dashboard.png" alt="Dashboard showing the day-1 difference view of a custom rain shock and the Impact Lens cards">
   <p class="sub"><b>Figure: live output of the running system.</b> Input: 3 real days ending 8 Aug 2019 (ERA5). Shock: a smooth +40 mm/day rain blob centred at 22.5°N 78.5°E (radius 3 cells), added to the last input day. View: scenario − baseline rain, day 1. The cards show model scenarios, not observations.</p>
 
   <div class="cols">
@@ -103,7 +104,7 @@
   </div>
 
   <h2>Reading the example</h2>
-  <p>In the figure, the 10-day core-zone total rises from 86.7 to 97.0 mm (+10.3) and rain over the shocked cells from 101.8 to 116.9 mm (+15.1). With DAP the added rain simply fades in place, so this shows the persistence of an anomaly, <b>not transport</b>. For the two official shocks, which change no rain, DAP's rain change is exactly zero; the console says this is a limit of the model, not a finding about the atmosphere.</p>
+  <p>In the figure, the 10-day core-zone rain total rises from 68.7 to 76.7 mm (+8.0) and rain over the shocked cells from 74.2 to 83.6 mm (+9.4). <b>Most of the change comes early:</b> over the shocked cells it is +7.0 mm/day on day 1, +1.8 on day 2, and between −0.4 and +0.4 afterwards. A total can hide changes of opposite sign, so the console also plots every day. This is how the model responds to injected rain; it is not evidence of how the atmosphere would.</p>
 
   <h2>Honesty box: what this is not</h2>
   <ul>

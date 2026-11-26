@@ -1,7 +1,7 @@
 // Browser-test harness using only Node built-ins and a locally installed Edge or Chrome (DevTools protocol).
 // Starts real servers from this checkout. All inputs are the dashboard's own cases or synthetic test input.
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -57,6 +57,19 @@ export function placeholderTree() {
   cpSync(join(ROOT, "serve.py"), join(dir, "serve.py"));
   cpSync(join(ROOT, "twin"), join(dir, "twin"), { recursive: true });
   mkdirSync(join(dir, "weights"));
+  return dir;
+}
+
+/** A copy of this checkout whose LocalNet checkpoint is damaged: the real server must fall back to DAP. */
+export function dapFallbackTree() {
+  const dir = mkdtempSync(join(tmpdir(), "mt-dapfallback-"));
+  cpSync(join(ROOT, "serve.py"), join(dir, "serve.py"));
+  cpSync(join(ROOT, "twin"), join(dir, "twin"), { recursive: true });
+  cpSync(join(ROOT, "weights"), join(dir, "weights"), { recursive: true });
+  const ckpt = join(dir, "weights", "localnet.pt");
+  const bytes = readFileSync(ckpt);
+  bytes[bytes.length >> 1] ^= 1;
+  writeFileSync(ckpt, bytes);
   return dir;
 }
 

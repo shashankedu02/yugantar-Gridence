@@ -131,7 +131,10 @@ function setStatus(state, text) {
   if (els.statusDot) {
     els.statusDot.className = `mt-dot${state ? " " + state : ""}`;
   }
-  if (els.statusText) els.statusText.textContent = text;
+  if (els.statusText) {
+    els.statusText.textContent = text;
+    els.statusText.title = text; // the visible text may be shortened with an ellipsis
+  }
 }
 
 /** Build an element with text content only: no string from the server or a file is ever parsed as HTML. */
@@ -746,8 +749,13 @@ function renderProvenance(state) {
     els.provenance.textContent = state.running ? "Running: no forecast on screen yet." : "No forecast on screen.";
     return;
   }
+  const baselineModel = describeServed(info.baseline);
+  const scenarioModel = info.scenario ? describeServed(info.scenario) : null;
   const parts = [
-    `Forecast on screen: ${describeServed(info.baseline)}`,
+    // The two forecasts are separate requests: name both whenever they were not answered the same way.
+    scenarioModel && scenarioModel !== baselineModel
+      ? `Forecast on screen: baseline from ${baselineModel}; scenario from ${scenarioModel}`
+      : `Forecast on screen: ${baselineModel}`,
     `input: ${info.caseLabel}`,
     `${info.steps} days`,
     info.scenario ? `scenario: ${info.shockLabel}` : "baseline only",

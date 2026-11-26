@@ -1,0 +1,528 @@
+{
+ "name": "LocalNetC64_activated",
+ "split": "val",
+ "model_name": "monsoontwin-localnet-c64-unvalidated",
+ "model_mode": "localnet",
+ "windows_sha256": "3b2e138472ef70460a2ec97eb3290e26ea4efae2e67109dc3f26c4dc4fc85552",
+ "nc_sha256": "f37bdbd0bd44e6fe951adf36c9a08620075f9d17de391b04c97d61f06797903b",
+ "weights_sha256": {
+  "climatology.npz": "e16bb7d65189c3d45007d0c033b7d16cd36fafc9db8cc23f248e2b63617415fd",
+  "dap.npz": "512a04649aec8295df3ba227da17621123402d93f8154c198783b00c01c81af8",
+  "localnet.pt": "7014c08477c2e9a6db4554280f6af5d8c07e7dc568faf494cfbcc5580caeedc9",
+  "model_select.json": "9345b204a5387f6e2d95ef24158d26986ae5fc9181401fcac5b0740697130652",
+  "norm.json": "0af029f261de5985dafdbf358cf91d4bdaf63729cccafddae84c4b1b3f4a5aea",
+  "provenance.json": "cf457f06df7df5885ad141a4efb70953cfc002cca0782206523c829d9a177fe4",
+  "static.npz": "dd2f5647825affa7daa71dd9dd933235bba0f44b89176ed7f0edad277f7cc248",
+  "stats.json": "f00103a38a93dcbaea4e4bd31da3db6862812cd2807bd2224c51264054e014a7"
+ },
+ "numpy": "2.5.5",
+ "python": "3.13.5",
+ "result": {
+  "n_windows": 46,
+  "windows": [
+   {
+    "first_input_day": "2018-01-14",
+    "kind": "regime_nearly_dry",
+    "ss": 0.06557506459980562,
+    "csi": 0.0,
+    "csi_persist": 0.0,
+    "csi_clim": 0.0,
+    "csi_skill": 0.0
+   },
+   {
+    "first_input_day": "2018-01-15",
+    "kind": "spread",
+    "ss": 0.05430110581145303,
+    "csi": 0.0,
+    "csi_persist": 0.05454545454545454,
+    "csi_clim": 0.0,
+    "csi_skill": -0.05769230769230769
+   },
+   {
+    "first_input_day": "2018-01-19",
+    "kind": "spread",
+    "ss": 0.143771669786285,
+    "csi": 0.14285714285714285,
+    "csi_persist": 0.1320754716981132,
+    "csi_clim": 0.0,
+    "csi_skill": 0.012422360248447197
+   },
+   {
+    "first_input_day": "2018-01-21",
+    "kind": "spread",
+    "ss": 0.1442180926335095,
+    "csi": 0.0,
+    "csi_persist": 0.09826589595375723,
+    "csi_clim": 0.0,
+    "csi_skill": -0.10897435897435898
+   },
+   {
+    "first_input_day": "2018-02-02",
+    "kind": "spread",
+    "ss": 0.10290413762058054,
+    "csi": 0.0,
+    "csi_persist": 0.02857142857142857,
+    "csi_clim": 0.0,
+    "csi_skill": -0.029411764705882353
+   },
+   {
+    "first_input_day": "2018-02-22",
+    "kind": "spread",
+    "ss": 0.18263487391991365,
+    "csi": 0.07407407407407407,
+    "csi_persist": 0.10191082802547771,
+    "csi_clim": 0.0,
+    "csi_skill": -0.030995534541633844
+   },
+   {
+    "first_input_day": "2018-03-16",
+    "kind": "spread",
+    "ss": 0.06342811291939245,
+    "csi": 0.0,
+    "csi_persist": 0.0,
+    "csi_clim": 0.0425531914893617,
+    "csi_skill": -0.04444444444444444
+   },
+   {
+    "first_input_day": "2018-03-29",
+    "kind": "spread",
+    "ss": 0.17426060986309988,
+    "csi": 0.042105263157894736,
+    "csi_persist": 0.02185792349726776,
+    "csi_clim": 0.03333333333333333,
+    "csi_skill": 0.009074410163339382
+   },
+   {
+    "first_input_day": "2018-04-07",
+    "kind": "spread",
+    "ss": 0.19757011181631032,
+    "csi": 0.18666666666666668,
+    "csi_persist": 0.08837209302325581,
+    "csi_clim": 0.0763888888888889,
+    "csi_skill": 0.10782312925170069
+   },
+   {
+    "first_input_day": "2018-04-09",
+    "kind": "spread",
+    "ss": 0.1528541337577133,
+    "csi": 0.175,
+    "csi_persist": 0.07446808510638298,
+    "csi_clim": 0.06040268456375839,
+    "csi_skill": 0.10862068965517241
+   },
+   {
+    "first_input_day": "2018-04-10",
+    "kind": "spread",
+    "ss": 0.08232808496378963,
+    "csi": 0.2185792349726776,
+    "csi_persist": 0.16356877323420074,
+    "csi_clim": 0.11797752808988764,
+    "csi_skill": 0.06576806314511231
+   },
+   {
+    "first_input_day": "2018-04-17",
+    "kind": "spread",
+    "ss": 0.18453134583011463,
+    "csi": 0.15833333333333333,
+    "csi_persist": 0.11173184357541899,
+    "csi_clim": 0.10884353741496598,
+    "csi_skill": 0.052463312368972746
+   },
+   {
+    "first_input_day": "2018-05-22",
+    "kind": "spread",
+    "ss": 0.1199066547462125,
+    "csi": 0.4284274193548387,
+    "csi_persist": 0.3157894736842105,
+    "csi_clim": 0.3357894736842105,
+    "csi_skill": 0.1394707581411993
+   },
+   {
+    "first_input_day": "2018-06-24",
+    "kind": "spread",
+    "ss": 0.12213403068246692,
+    "csi": 0.5191768007483629,
+    "csi_persist": 0.478030303030303,
+    "csi_clim": 0.4587786259541985,
+    "csi_skill": 0.0788292844525966
+   },
+   {
+    "first_input_day": "2018-08-16",
+    "kind": "spread",
+    "ss": 0.11570613818527449,
+    "csi": 0.41877637130801687,
+    "csi_persist": 0.3348694316436252,
+    "csi_clim": 0.42407407407407405,
+    "csi_skill": -0.009198583580935291
+   },
+   {
+    "first_input_day": "2018-08-25",
+    "kind": "spread",
+    "ss": 0.07811319031808907,
+    "csi": 0.4485683987274655,
+    "csi_persist": 0.4405086285195277,
+    "csi_clim": 0.4195933456561922,
+    "csi_skill": 0.01440553084243428
+   },
+   {
+    "first_input_day": "2018-08-29",
+    "kind": "spread",
+    "ss": 0.10554139508593435,
+    "csi": 0.315527950310559,
+    "csi_persist": 0.35091083413231067,
+    "csi_clim": 0.2662779397473275,
+    "csi_skill": -0.05451159206216686
+   },
+   {
+    "first_input_day": "2018-09-18",
+    "kind": "spread",
+    "ss": 0.16970705933288197,
+    "csi": 0.15771230502599654,
+    "csi_persist": 0.12848484848484848,
+    "csi_clim": 0.11126760563380282,
+    "csi_skill": 0.03353637224818796
+   },
+   {
+    "first_input_day": "2018-09-21",
+    "kind": "spread",
+    "ss": 0.291137554325966,
+    "csi": 0.23205741626794257,
+    "csi_persist": 0.20320855614973263,
+    "csi_clim": 0.07553956834532374,
+    "csi_skill": 0.03620628753090779
+   },
+   {
+    "first_input_day": "2018-10-11",
+    "kind": "spread",
+    "ss": 0.02104316348188558,
+    "csi": 0.09375,
+    "csi_persist": 0.05871559633027523,
+    "csi_clim": 0.026717557251908396,
+    "csi_skill": 0.03721978557504873
+   },
+   {
+    "first_input_day": "2018-11-13",
+    "kind": "spread",
+    "ss": 0.15195775926115127,
+    "csi": 0.2671009771986971,
+    "csi_persist": 0.2805755395683453,
+    "csi_clim": 0.1793478260869565,
+    "csi_skill": -0.01872964169381103
+   },
+   {
+    "first_input_day": "2018-11-19",
+    "kind": "spread",
+    "ss": 0.10639723731505697,
+    "csi": 0.19298245614035087,
+    "csi_persist": 0.17258883248730963,
+    "csi_clim": 0.1263537906137184,
+    "csi_skill": 0.02464750834140566
+   },
+   {
+    "first_input_day": "2018-11-26",
+    "kind": "spread",
+    "ss": 0.13469879806204896,
+    "csi": 0.22043010752688172,
+    "csi_persist": 0.14349775784753363,
+    "csi_clim": 0.29304029304029305,
+    "csi_skill": -0.10270767173658703
+   },
+   {
+    "first_input_day": "2018-12-02",
+    "kind": "spread",
+    "ss": 0.024069060428090594,
+    "csi": 0.21470588235294116,
+    "csi_persist": 0.15,
+    "csi_clim": 0.2761904761904762,
+    "csi_skill": -0.08494582043343658
+   },
+   {
+    "first_input_day": "2018-12-07",
+    "kind": "spread",
+    "ss": 0.08762238627721597,
+    "csi": 0.2917933130699088,
+    "csi_persist": 0.2684729064039409,
+    "csi_clim": 0.1641337386018237,
+    "csi_skill": 0.03187907443226589
+   },
+   {
+    "first_input_day": "2019-01-17",
+    "kind": "spread",
+    "ss": 0.1516640952950234,
+    "csi": 0.16666666666666666,
+    "csi_persist": 0.05825242718446602,
+    "csi_clim": 0.0,
+    "csi_skill": 0.11512027491408933
+   },
+   {
+    "first_input_day": "2019-02-12",
+    "kind": "spread",
+    "ss": -0.059047717185640225,
+    "csi": 0.0,
+    "csi_persist": 0.14388489208633093,
+    "csi_clim": 0.0,
+    "csi_skill": -0.1680672268907563
+   },
+   {
+    "first_input_day": "2019-02-16",
+    "kind": "spread",
+    "ss": -0.041610535733680565,
+    "csi": 0.06818181818181818,
+    "csi_persist": 0.17094017094017094,
+    "csi_clim": 0.0,
+    "csi_skill": -0.12394564198687912
+   },
+   {
+    "first_input_day": "2019-02-17",
+    "kind": "regime_winter_disturbance",
+    "ss": 0.01383236303832347,
+    "csi": 0.0,
+    "csi_persist": 0.10471204188481675,
+    "csi_clim": 0.0,
+    "csi_skill": -0.11695906432748537
+   },
+   {
+    "first_input_day": "2019-03-11",
+    "kind": "spread",
+    "ss": 0.2002645039894554,
+    "csi": 0.0,
+    "csi_persist": 0.05,
+    "csi_clim": 0.05555555555555555,
+    "csi_skill": -0.058823529411764705
+   },
+   {
+    "first_input_day": "2019-03-20",
+    "kind": "spread",
+    "ss": 0.1648363598738559,
+    "csi": 0.2727272727272727,
+    "csi_persist": 0.2222222222222222,
+    "csi_clim": 0.11904761904761904,
+    "csi_skill": 0.06493506493506493
+   },
+   {
+    "first_input_day": "2019-05-19",
+    "kind": "spread",
+    "ss": 0.0937939111399023,
+    "csi": 0.12790697674418605,
+    "csi_persist": 0.17625899280575538,
+    "csi_clim": 0.242,
+    "csi_skill": -0.1505185003374854
+   },
+   {
+    "first_input_day": "2019-05-29",
+    "kind": "spread",
+    "ss": 0.2421758297457972,
+    "csi": 0.36212624584717606,
+    "csi_persist": 0.21798780487804878,
+    "csi_clim": 0.3079667063020214,
+    "csi_skill": 0.07826146521902935
+   },
+   {
+    "first_input_day": "2019-06-01",
+    "kind": "spread",
+    "ss": 0.1543054430923008,
+    "csi": 0.3465085638998682,
+    "csi_persist": 0.19385026737967914,
+    "csi_clim": 0.3312368972746331,
+    "csi_skill": 0.02283568959321989
+   },
+   {
+    "first_input_day": "2019-06-02",
+    "kind": "regime_onset",
+    "ss": 0.09945707969024109,
+    "csi": 0.33456334563345635,
+    "csi_persist": 0.16775884665792923,
+    "csi_clim": 0.40370751802265703,
+    "csi_skill": -0.11595680723646606
+   },
+   {
+    "first_input_day": "2019-06-03",
+    "kind": "regime_heatwave",
+    "ss": 0.16684770426570825,
+    "csi": 0.41541755888650966,
+    "csi_persist": 0.3093980992608237,
+    "csi_clim": 0.42459173871277617,
+    "csi_skill": -0.015943774956833776
+   },
+   {
+    "first_input_day": "2019-06-25",
+    "kind": "spread",
+    "ss": 0.24511477813502794,
+    "csi": 0.6019323671497585,
+    "csi_persist": 0.35309503051438534,
+    "csi_clim": 0.5546425636811833,
+    "csi_skill": 0.10618393140453153
+   },
+   {
+    "first_input_day": "2019-07-04",
+    "kind": "spread",
+    "ss": 0.20549323643771414,
+    "csi": 0.564,
+    "csi_persist": 0.4353413654618474,
+    "csi_clim": 0.4611764705882353,
+    "csi_skill": 0.190829694323144
+   },
+   {
+    "first_input_day": "2019-07-18",
+    "kind": "spread",
+    "ss": 0.26437655374248453,
+    "csi": 0.5734208367514356,
+    "csi_persist": 0.23512544802867383,
+    "csi_clim": 0.4436191762322755,
+    "csi_skill": 0.23329643110300505
+   },
+   {
+    "first_input_day": "2019-07-26",
+    "kind": "spread",
+    "ss": 0.05738807071145977,
+    "csi": 0.4511517077045274,
+    "csi_persist": 0.4264919941775837,
+    "csi_clim": 0.4675862068965517,
+    "csi_skill": -0.030867906513517205
+   },
+   {
+    "first_input_day": "2019-07-29",
+    "kind": "regime_heavy_rain",
+    "ss": 0.08632791081600694,
+    "csi": 0.44074074074074077,
+    "csi_persist": 0.3793103448275862,
+    "csi_clim": 0.4289655172413793,
+    "csi_skill": 0.02062086240830204
+   },
+   {
+    "first_input_day": "2019-09-12",
+    "kind": "spread",
+    "ss": 0.010141180135928166,
+    "csi": 0.31839847473784555,
+    "csi_persist": 0.384963768115942,
+    "csi_clim": 0.2428219852337982,
+    "csi_skill": -0.10822987318029234
+   },
+   {
+    "first_input_day": "2019-10-15",
+    "kind": "spread",
+    "ss": 0.08088540799339178,
+    "csi": 0.3286334056399132,
+    "csi_persist": 0.2846638655462185,
+    "csi_clim": 0.02877697841726619,
+    "csi_skill": 0.0614669635377348
+   },
+   {
+    "first_input_day": "2019-10-16",
+    "kind": "regime_cyclone_wind",
+    "ss": 0.05807545040755143,
+    "csi": 0.37513171759747105,
+    "csi_persist": 0.35015447991761073,
+    "csi_clim": 0.03379224030037547,
+    "csi_skill": 0.03843565417930962
+   },
+   {
+    "first_input_day": "2019-10-23",
+    "kind": "spread",
+    "ss": 0.07729055920064327,
+    "csi": 0.25136612021857924,
+    "csi_persist": 0.17965367965367965,
+    "csi_clim": 0.14225941422594143,
+    "csi_skill": 0.08741727583372984
+   },
+   {
+    "first_input_day": "2019-12-07",
+    "kind": "spread",
+    "ss": 0.08374967804402499,
+    "csi": 0.0,
+    "csi_persist": 0.09615384615384616,
+    "csi_clim": 0.0748663101604278,
+    "csi_skill": -0.10638297872340426
+   }
+  ],
+  "skill_vs_best_ref_by_lead_channel": {
+   "1": {
+    "t2m": 0.2902,
+    "tp": 0.2502,
+    "u10": 0.2463,
+    "v10": 0.2727,
+    "msl": 0.2569,
+    "tcwv": 0.3379
+   },
+   "4": {
+    "t2m": 0.0557,
+    "tp": 0.0781,
+    "u10": 0.034,
+    "v10": 0.044,
+    "msl": -0.0335,
+    "tcwv": 0.1198
+   },
+   "8": {
+    "t2m": -0.0583,
+    "tp": -0.0191,
+    "u10": -0.0415,
+    "v10": -0.0378,
+    "msl": -0.1236,
+    "tcwv": -0.0603
+   }
+  },
+  "skill_vs_persistence_by_lead_channel": {
+   "1": {
+    "t2m": 0.2926,
+    "tp": 0.3081,
+    "u10": 0.2711,
+    "v10": 0.281,
+    "msl": 0.2887,
+    "tcwv": 0.3384
+   },
+   "4": {
+    "t2m": 0.2206,
+    "tp": 0.2646,
+    "u10": 0.2346,
+    "v10": 0.249,
+    "msl": 0.2553,
+    "tcwv": 0.2704
+   },
+   "8": {
+    "t2m": 0.1572,
+    "tp": 0.2364,
+    "u10": 0.2001,
+    "v10": 0.2229,
+    "msl": 0.1254,
+    "tcwv": 0.2071
+   }
+  },
+  "mean_day4_skill_vs_persistence": 0.24907118563057198,
+  "day8_variance_ratio_by_channel": {
+   "t2m": 0.9944000244140625,
+   "tp": 0.2669999897480011,
+   "u10": 0.7495999932289124,
+   "v10": 0.7749000191688538,
+   "msl": 0.960099995136261,
+   "tcwv": 0.9434000253677368
+  },
+  "local_estimate_points": {
+   "forecast": {
+    "mean_ss": 0.1180820355186905,
+    "mean_csi_skill": 0.005097018487337016,
+    "rmse_pts": 29.520508879672622,
+    "csi_pts": 0.7645527731005525,
+    "points": 30.285061652773173
+   },
+   "anti_blur_of_10": 9.445766780687416,
+   "note": "causality (15) comes from eval.shock_battery; repo scan (15) and brief (15) are separate."
+  },
+  "gates": {
+   "validity_100pct": true,
+   "day4_skill_vs_persistence_gt_0": true,
+   "null_bit_identical": true,
+   "deterministic": true
+  },
+  "failures": {
+   "invalid": [],
+   "null_not_identical": [],
+   "not_deterministic": []
+  }
+ },
+ "gates": {
+  "validity_100pct": true,
+  "day4_skill_vs_persistence_gt_0": true,
+  "null_bit_identical": true,
+  "deterministic": true
+ }
+}

@@ -138,6 +138,8 @@
     .mt-topbar .mt-select, .mt-topbar .mt-input { width: auto; }
     #case-select { width: 230px !important; text-overflow: ellipsis; }
     #api-base-input { width: 200px; }
+    /* Long model names must not wrap the bar; the banner below shows the full name. */
+    #api-status-text { display: inline-block; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
     .mt-banners { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 6px; }
     .mt-banners .mt-banner, .mt-banners .mt-banner-strip { padding-top: 3px; padding-bottom: 3px; }
     .mt-layout { padding-top: 8px; padding-bottom: 8px; align-items: start; }

@@ -160,15 +160,18 @@ export function impactCards(n, { steps, modelMode, rainShocked }) {
   const cannotMoveRain = n.maxRainChange === 0 && !rainShocked && modelMode === "dap"
     ? " This model (DAP) forecasts each variable and grid cell on its own, so a shock without a rain change cannot change rain. A zero here is a limit of the model, not a finding about the atmosphere."
     : "";
+  const learnedResponse = modelMode === "localnet" && n.maxRainChange !== null
+    ? " A shock response is what this trained model does, not verified physics: local tests found cases where a shock did not spread, and one where a small temperature shock removed heavy rain at one place. A total can also hide daily changes of opposite sign."
+    : "";
   const cards = [
     card("core-rain", `Core monsoon zone rain, ${steps}-day total`, n.coreRain, "mm", 1,
       "Area-weighted mean of daily rain over 18–28°N, 65–88°E, summed over the forecast days.",
-      `1° grid-mean forecast rain, not station or IMD rain.${cannotMoveRain}`),
+      `1° grid-mean forecast rain, not station or IMD rain.${cannotMoveRain}${learnedResponse}`),
   ];
   if (n.shockedRain) {
     cards.push(card("shocked-area-rain", `Rain over the shocked area, ${steps}-day total`, n.shockedRain, "mm", 1,
       `Area-weighted mean over the ${n.shockedRain.cells} shocked cells, summed over the forecast days.`,
-      `Model response only; effects outside these cells are not counted.${cannotMoveRain}`));
+      `Model response only; effects outside these cells are not counted.${cannotMoveRain}${learnedResponse}`));
   }
   if (n.departure) {
     cards.push(card("rain-departure", "Core zone rain vs climatology", n.departure, "%", 1,

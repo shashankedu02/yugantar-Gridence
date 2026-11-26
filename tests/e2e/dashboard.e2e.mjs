@@ -2,17 +2,17 @@
 // Run from the repo root:  node tests/e2e/dashboard.e2e.mjs
 import { checker, openBrowser, sleep, startApi, startMislabellingProxy, startWeb, stop } from "./harness.mjs";
 
-const DAP = 8141, PROXY = 8143, WEB = 5541;
+const API = 8141, PROXY = 8143, WEB = 5541;
 const url = (p) => `http://127.0.0.1:${p}`;
 const t = checker();
-const dap = await startApi(DAP);
+const api = await startApi(API);
 const HOSTILE = '<img src=x onerror="window.__injected=1">';
-const proxy = await startMislabellingProxy(PROXY, DAP, { "x-monsoontwin-fallback": HOSTILE });
+const proxy = await startMislabellingProxy(PROXY, API, { "x-monsoontwin-fallback": HOSTILE });
 const web = await startWeb(WEB);
 const b = await openBrowser(9441);
 const CH = ["t2m", "tp", "u10", "v10", "msl", "tcwv"];
 try {
-  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(DAP))})` });
+  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(API))})` });
   const idle = () => b.waitFor(async () => !(await b.disabled("#run-btn")), "idle");
   const load = async () => {
     await b.goto(`${url(WEB)}/index.html`);
@@ -44,7 +44,7 @@ try {
   const colourCheck = (view, ch) => b.eval(`(async () => {
     const st = await import("./js/state.js"), sc = await import("./js/scenario.js");
     const base = st.buildSyntheticCase();
-    const call = async (pert) => (await (await fetch(${JSON.stringify(url(DAP))} + "/" + "simulate", { method: "POST", headers: { "Content-Type": "application/json" },
+    const call = async (pert) => (await (await fetch(${JSON.stringify(url(API))} + "/" + "simulate", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sc.buildSimulatePayload({ activeCase: base, steps: 10, perturbation: pert })) })).json()).rollout;
     const a = await call(null);
     let field = a[0][${ch}];
@@ -98,10 +98,10 @@ try {
   const energy = await b.eval(`(async () => {
     const st = await import("./js/state.js"), sc = await import("./js/scenario.js");
     const base = st.buildSyntheticCase(), pert = sc.buildPresetPerturbation("warm_ocean", base.init_states);
-    const call = async (p) => (await (await fetch(${JSON.stringify(url(DAP))} + "/" + "simulate", { method: "POST", headers: { "Content-Type": "application/json" },
+    const call = async (p) => (await (await fetch(${JSON.stringify(url(API))} + "/" + "simulate", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sc.buildSimulatePayload({ activeCase: base, steps: 10, perturbation: p })) })).json()).rollout;
     const a = await call(null), s = await call(pert);
-    const std = (await (await fetch(${JSON.stringify(url(DAP))} + "/meta", { method: "POST" })).json()).channel_std;
+    const std = (await (await fetch(${JSON.stringify(url(API))} + "/meta", { method: "POST" })).json()).channel_std;
     const hit = []; for (let r = 0; r < 32; r++) for (let c = 0; c < 36; c++) if (pert.some((ch) => ch[r][c] !== 0)) hit.push([r, c]);
     const sum = Array(13).fill(0), cnt = Array(13).fill(0);
     for (let r = 0; r < 32; r++) for (let c = 0; c < 36; c++) {
@@ -111,12 +111,13 @@ try {
       sum[k] += e; cnt[k]++;
     }
     const want = sum.map((v, i) => v / cnt[i]);
+    const total = sum.reduce((x, y) => x + y, 0), outsideShare = (total - sum[0]) / total;
     const svg = document.querySelector("#energy-chart-container svg");
     const bars = [...svg.querySelectorAll("rect")].map((r) => +r.getAttribute("height"));
     const texts = [...svg.querySelectorAll("text")].map((e) => ({ s: e.textContent, r: e.getBoundingClientRect() }));
     let overlap = 0; for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) { const p = texts[i].r, q = texts[j].r;
       if (Math.min(p.right, q.right) - Math.max(p.left, q.left) > 2 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 2) overlap++; }
-    return { want, bars, legend: texts.map((x) => x.s), overlap, caption: document.querySelector("#energy-chart-container .mt-caption").innerText,
+    return { want, outsideShare, bars, legend: texts.map((x) => x.s), overlap, caption: document.querySelector("#energy-chart-container .mt-caption").innerText,
       labelPx: 10 * svg.getBoundingClientRect().width / 460 };
   })()`);
   const max = Math.max(...energy.want), top = Math.max(...energy.bars);
@@ -126,7 +127,8 @@ try {
   t.ok(!energy.legend.includes("Baseline"), "no invented baseline series");
   t.ok(energy.overlap === 0, "energy chart labels do not overlap", String(energy.overlap));
   t.ok(energy.labelPx >= 8, "chart text is at least 8 px at 1366x768", energy.labelPx.toFixed(1));
-  t.ok(/0\.0% of the response energy is outside/.test(energy.caption), "caption states what the model does: DAP keeps the response in place", energy.caption);
+  const said = Number((energy.caption.match(/([\d.]+)% of the response energy is outside/) || [])[1]);
+  t.ok(Math.abs(said - 100 * energy.outsideShare) < 0.06, "caption share matches an independent calculation", `${energy.caption} want ${(100 * energy.outsideShare).toFixed(2)}`);
 
   // ---- keyboard --------------------------------------------------------------------------------------------
   await b.click('.mt-tab[data-view="baseline"]');
@@ -191,6 +193,6 @@ try {
   t.ok((await b.eval(`document.activeElement.id`)) === "btn-open-left", "Escape closes the drawer and returns focus");
   t.ok(b.log.exceptions.length === 0 && b.log.console.length === 0, "sandbox console is clean", [...b.log.exceptions, ...b.log.console].join(" | "));
 } finally {
-  await b.close(); proxy.close(); await stop(web); await stop(dap);
+  await b.close(); proxy.close(); await stop(web); await stop(api);
 }
 process.exit(t.done("dashboard e2e") ? 1 : 0);

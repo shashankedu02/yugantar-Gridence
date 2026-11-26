@@ -1,6 +1,6 @@
 # Development quick start
 
-Read `docs/WORKSTREAMS.md` first (who owns what, git rules). Status: the server serves the fitted **DAP** model from `weights/`; LocalNet is present but not activated. For install and run instructions, `README.md` is current; this page keeps team-era notes.
+Read `docs/WORKSTREAMS.md` first (who owns what, git rules). Status: the server serves **LocalNet C64** from `weights/`, with **DAP** as its fallback (see `weights/MANIFEST.md`). Do not run `training.fit_dap` into `weights/`: it overwrites part of that package. For install and run instructions, `README.md` is current; this page keeps team-era notes.
 
 ## 1. Get the code (everyone)
 ```powershell

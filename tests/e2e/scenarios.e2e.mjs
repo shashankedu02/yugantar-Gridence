@@ -4,16 +4,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { checker, openBrowser, ROOT, sleep, startApi, startWeb, stop } from "./harness.mjs";
 
-const DAP = 8161, WEB = 5561;
+const API = 8161, WEB = 5561;
 const url = (p) => `http://127.0.0.1:${p}`;
 const t = checker();
-const dap = await startApi(DAP);
+const api = await startApi(API);
 const web = await startWeb(WEB);
 const b = await openBrowser(9461);
 const CASES = JSON.parse(readFileSync(join(ROOT, "dashboard/cases/index.json"), "utf-8")).cases
   .map((n) => JSON.parse(readFileSync(join(ROOT, "dashboard/cases", n), "utf-8")));
-const post = async (body) => (await (await fetch(`${url(DAP)}/${"simulate"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json()).rollout;
-const climatology = async (body) => (await (await fetch(`${url(DAP)}/climatology`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json()).climatology;
+const post = async (body) => (await (await fetch(`${url(API)}/${"simulate"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json()).rollout;
+const climatology = async (body) => (await (await fetch(`${url(API)}/climatology`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json()).climatology;
 
 // Independent re-computation of the impact numbers (written separately from the dashboard code).
 function coreTotal(roll) {
@@ -35,7 +35,7 @@ const heavy = (roll) => roll.reduce((n, d) => n + d[1].flat().filter((v) => v >=
 
 try {
   await b.viewport(1366, 768);
-  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(DAP))})` });
+  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(API))})` });
   await b.goto(`${url(WEB)}/index.html`);
   await b.waitFor(async () => (await b.text("api-status-text")).startsWith("Ready"), "connection");
   const idle = () => b.waitFor(async () => !(await b.disabled("#run-btn")), "idle");
@@ -76,7 +76,7 @@ try {
   }
   await b.eval(`document.querySelector('#impact-container [data-indicator-id="core-rain"] details').open = true`);
   const pop = await b.eval(`document.querySelector('#impact-container [data-indicator-id="core-rain"] .mt-popover').innerText`);
-  t.ok(pop.includes("Limitation") && pop.includes("cannot change rain"), "the card explains that DAP cannot turn this shock into rain", pop);
+  t.ok(pop.includes("Limitation") && pop.includes("not verified physics") && !pop.includes("DAP"), "the card states the limit of a learned response", pop);
   const impactText = await b.text("impact-container");
   t.ok(!/ELEVATED|NOMINAL/.test(impactText) && (await b.eval(`document.querySelectorAll("#impact-container article").length`)) >= 4, "no invented status words; at least four indicators");
   t.ok(await b.eval(`!!document.querySelector("#impact-series svg path")`), "daily core-zone rain is charted over time");
@@ -99,7 +99,14 @@ try {
   t.ok(diff < 1e-9, "the custom delta is sent exactly as configured", String(diff));
   t.ok(JSON.stringify(custom.init_states) === JSON.stringify(mc.init_states), "the input days are not modified by the shock (the server applies the delta)");
   const k = await cards();
-  t.ok(num(k["shocked-area-rain"], "Δ") > 1, "a rain shock changes rain over the shocked area", k["shocked-area-rain"]);
+  // LocalNet's response to a rain shock can change sign from day to day, so compare with the server's own arrays.
+  const [ca, cs] = [await post(sent()[0]), await post(custom)];
+  const areaRain = (day) => { let s = 0, w = 0; for (let r = 12; r <= 15; r++) for (let c = 10; c <= 15; c++) { const q = Math.cos((6.5 + r) * Math.PI / 180); s += q * day[1][r][c]; w += q; } return s / w; };
+  const daily = ca.map((day, i) => areaRain(cs[i]) - areaRain(day));
+  const totalChange = daily.reduce((x, y) => x + y, 0);
+  console.log(`  rain shock, change over the shocked area by day: ${daily.map((v) => v.toFixed(2)).join(" ")} | total ${totalChange.toFixed(3)}`);
+  t.ok(daily[0] > 1, "a rain shock raises day-1 rain over the shocked area", daily.map((v) => v.toFixed(2)).join(" "));
+  t.ok(Math.abs(num(k["shocked-area-rain"], "Δ") - totalChange) < 0.051, "the shocked-area card equals the server's 10-day change", `${k["shocked-area-rain"]} want ${totalChange.toFixed(2)}`);
   t.ok((await b.text("result-provenance")).includes("Custom:"), "result names the custom shock");
 
   // smooth blob picked on the map
@@ -146,6 +153,6 @@ try {
   await b.shot("scenario-final");
   t.ok(b.log.exceptions.length === 0 && !b.log.console.some((m) => m.includes("listener failed")), "no JavaScript errors", [...b.log.exceptions, ...b.log.console].join(" | "));
 } finally {
-  await b.close(); await stop(web); await stop(dap);
+  await b.close(); await stop(web); await stop(api);
 }
 process.exit(t.done("scenarios e2e") ? 1 : 0);

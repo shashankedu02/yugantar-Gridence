@@ -1,18 +1,20 @@
 // Dashboard <-> real server. Run from the repo root:  node tests/e2e/integration.e2e.mjs
 // (set PYTHON to the interpreter that has the server requirements if "python" is not it).
-import { checker, openBrowser, placeholderTree, sleep, startApi, startMislabellingProxy, startWeb, stop } from "./harness.mjs";
+import { checker, dapFallbackTree, openBrowser, placeholderTree, sleep, startApi, startMislabellingProxy, startWeb, stop } from "./harness.mjs";
 
-const DAP = 8131, PLACEHOLDER = 8132, PROXY = 8133, DEAD = 8139, WEB = 5531;
+const API = 8131, PLACEHOLDER = 8132, PROXY = 8133, FALLBACK = 8134, DEAD = 8139, WEB = 5531;
+const MODEL = "monsoontwin-localnet-c64-unvalidated", DAP_MODEL = "monsoontwin-dap-unvalidated";
 const url = (p) => `http://127.0.0.1:${p}`;
 const t = checker();
-let dap = await startApi(DAP);
+let api = await startApi(API);
+const fallback = await startApi(FALLBACK, dapFallbackTree());
 const placeholder = await startApi(PLACEHOLDER, placeholderTree());
-const proxy = await startMislabellingProxy(PROXY, DAP);
+const proxy = await startMislabellingProxy(PROXY, API);
 const web = await startWeb(WEB);
 const b = await openBrowser(9431);
 try {
   await b.viewport(1366, 768);
-  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(DAP))})` });
+  await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("monsoontwin.apiBaseUrl", ${JSON.stringify(url(API))})` });
   const idle = () => b.waitFor(async () => !(await b.disabled("#run-btn")), "the run to finish");
   const connect = async (port) => {
     await b.eval(`document.getElementById("api-base-input").value = ${JSON.stringify(url(port))}; document.getElementById("api-apply-btn").click()`);
@@ -31,10 +33,10 @@ try {
 
   await load();
   t.ok((await b.errorText()) === "", "connecting shows no error", await b.errorText());
-  t.ok((await b.text("model-banner")).includes("monsoontwin-dap-unvalidated"), "banner names the connected model");
+  t.ok((await b.text("model-banner")).includes(MODEL), "banner names the connected model");
 
   b.resetLog(); await run();
-  t.ok((await b.text("result-provenance")).includes("monsoontwin-dap-unvalidated"), "result names the model that answered", await b.text("result-provenance"));
+  t.ok((await b.text("result-provenance")).includes(MODEL), "result names the model that answered", await b.text("result-provenance"));
   t.ok(await dayEnabled(), "a baseline forecast is on screen");
   const clim = b.posts("/climatology");
   t.ok(clim.length === 1 && clim[0].status === 200 && JSON.parse(clim[0].body).steps === 10, "climatology request carries steps and succeeds");
@@ -77,29 +79,42 @@ try {
   await connect(PROXY); await b.click('[data-preset-id="warm_ocean"]'); await run();
   t.ok((await b.text("notice-text")).includes("not comparable"), "a fallback is reported", await b.text("notice-text"));
   t.ok(await b.disabled('.mt-tab[data-view="difference"]'), "no difference is drawn across a fallback");
+  const mixed = await b.text("result-provenance");
+  t.ok(mixed.includes(`baseline from ${MODEL}; scenario from ${MODEL} (FALLBACK: whole-request-fallback)`), "the line above the map names both forecasts when they differ", mixed);
+
+  // a real server whose LocalNet cannot load: it must say DAP everywhere
+  await connect(FALLBACK);
+  t.ok((await b.text("api-status-text")).includes(DAP_MODEL) && (await b.text("model-banner")).includes(DAP_MODEL) && (await b.text("model-banner")).includes("mode: dap"),
+    "damaged checkpoint: status and banner say DAP", await b.text("model-banner"));
+  b.resetLog(); await b.click('[data-preset-id="warm_ocean"]'); await run();
+  const line = await b.text("result-provenance");
+  t.ok(line.includes(DAP_MODEL) && !line.includes("localnet"), "damaged checkpoint: the result is labelled DAP", line);
+  t.ok((await b.eval(`document.querySelector('#impact-container [data-indicator-id="core-rain"] .mt-popover').textContent`)).includes("cannot change rain"),
+    "under DAP the card still explains that this shock cannot change rain");
+  t.ok((await b.text("run-log")).includes(DAP_MODEL), "the run log records DAP");
 
   // dead server
   await connect(DEAD);
   t.ok((await b.text("api-status-text")) === "Offline", "status is Offline");
   t.ok(!(await b.text("model-banner")).includes("monsoontwin") && !(await b.text("model-banner")).includes("Not a model"), "no model identity is shown while offline", await b.text("model-banner"));
   t.ok(!(await dayEnabled()), "no forecast is shown while offline");
-  await connect(DAP);
+  await connect(API);
   t.ok((await b.errorText()) === "", "reconnecting clears the error");
 
   // server dies in the middle of a session, then comes back
-  await stop(dap);
+  await stop(api);
   await run();
   t.ok((await b.errorText()).includes("No forecast is shown"), "a failed run says so", await b.errorText());
   t.ok((await b.text("api-status-text")) === "Offline" && !(await dayEnabled()), "state is honest after the failure");
   t.ok(!(await b.disabled("#run-btn")) && !(await b.disabled("#api-apply-btn")), "controls are usable again");
-  dap = await startApi(DAP);
+  api = await startApi(API);
   await run();
   t.ok(await dayEnabled(), "Run recovers once the server is back", await b.errorText());
-  t.ok((await b.text("model-banner")).includes("monsoontwin-dap-unvalidated"), "identity is restored on reconnect");
+  t.ok((await b.text("model-banner")).includes(MODEL), "identity is restored on reconnect");
   t.ok(b.log.exceptions.length === 0, "no uncaught JavaScript exceptions", b.log.exceptions.join(" | "));
   t.ok(!b.log.console.some((m) => m.includes("Store listener failed")), "no rendering errors were swallowed", b.log.console.join(" | "));
   await b.shot("integration-final");
 } finally {
-  await b.close(); proxy.close(); await stop(web); await stop(dap); await stop(placeholder);
+  await b.close(); proxy.close(); await stop(web); await stop(api); await stop(placeholder); await stop(fallback);
 }
 process.exit(t.done("integration e2e") ? 1 : 0);

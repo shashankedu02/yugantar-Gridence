@@ -1,0 +1,12 @@
+{
+ "model": "DAP baseline",
+ "train_years": [
+  2005,
+  2015
+ ],
+ "n_days": 4017,
+ "first_day": "2005-01-01",
+ "last_day": "2015-12-31",
+ "climatology_sha256": "e16bb7d65189c3d45007d0c033b7d16cd36fafc9db8cc23f248e2b63617415fd",
+ "dap_sha256": "512a04649aec8295df3ba227da17621123402d93f8154c198783b00c01c81af8"
+}

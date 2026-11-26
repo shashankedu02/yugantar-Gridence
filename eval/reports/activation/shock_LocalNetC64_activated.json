@@ -1,0 +1,158 @@
+{
+ "name": "LocalNetC64_activated",
+ "model_name": "monsoontwin-localnet-c64-unvalidated",
+ "windows_sha256": "3b2e138472ef70460a2ec97eb3290e26ea4efae2e67109dc3f26c4dc4fc85552",
+ "std_source": "weights/stats.json",
+ "result": {
+  "windows": [
+   {
+    "first_input_day": "2018-01-15",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9839147925376892,
+     "localized": true,
+     "far_frac_max": 1.2780790314970147e-10,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9855661392211914,
+     "localized": true,
+     "far_frac_max": 3.421708194562001e-10,
+     "no_teleport": true,
+     "propagates": true
+    }
+   },
+   {
+    "first_input_day": "2018-03-16",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9804461598396301,
+     "localized": true,
+     "far_frac_max": 9.655815036424542e-11,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9926267266273499,
+     "localized": true,
+     "far_frac_max": 2.9000743473339696e-10,
+     "no_teleport": true,
+     "propagates": false
+    }
+   },
+   {
+    "first_input_day": "2018-05-22",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": false,
+     "near_frac_day1": 0.9827422499656677,
+     "localized": true,
+     "far_frac_max": 9.004801071466062e-11,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.994990348815918,
+     "localized": true,
+     "far_frac_max": 6.437564370465054e-11,
+     "no_teleport": true,
+     "propagates": false
+    }
+   },
+   {
+    "first_input_day": "2019-07-04",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9400336742401123,
+     "localized": true,
+     "far_frac_max": 1.0664800154103204e-09,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9903046488761902,
+     "localized": true,
+     "far_frac_max": 3.8516287381717973e-10,
+     "no_teleport": true,
+     "propagates": true
+    }
+   },
+   {
+    "first_input_day": "2018-09-18",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.965420126914978,
+     "localized": true,
+     "far_frac_max": 4.10221509539177e-11,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9903637766838074,
+     "localized": true,
+     "far_frac_max": 4.254965824124213e-11,
+     "no_teleport": true,
+     "propagates": false
+    }
+   },
+   {
+    "first_input_day": "2018-11-13",
+    "null_ok": true,
+    "warm_ocean": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.9729189872741699,
+     "localized": true,
+     "far_frac_max": 8.905503418032978e-11,
+     "no_teleport": true,
+     "propagates": true
+    },
+    "monsoon_stall": {
+     "finite": true,
+     "nonzero": true,
+     "stable": true,
+     "near_frac_day1": 0.995659351348877,
+     "localized": true,
+     "far_frac_max": 2.6803489983073803e-11,
+     "no_teleport": true,
+     "propagates": false
+    }
+   }
+  ],
+  "null_ok_all": true,
+  "windows_both_nonzero_and_localized": 6,
+  "n_windows": 6,
+  "gate_both_localized_ge_5_of_6": true
+ }
+}
