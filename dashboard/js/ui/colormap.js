@@ -10,11 +10,14 @@ export const DRY_RGB = [34, 41, 56];
 
 export const PALETTE_STOPS = {
   thermal: [
-    [22, 32, 64],
-    [59, 82, 139],
-    [142, 74, 133],
-    [217, 95, 82],
-    [249, 184, 74]
+    [19, 41, 75],
+    [51, 65, 154],
+    [111, 74, 150],
+    [168, 85, 138],
+    [218, 106, 102],
+    [245, 149, 69],
+    [251, 201, 74],
+    [243, 245, 140]
   ],
   lajolla: [
     [26, 20, 18],
@@ -23,16 +26,16 @@ export const PALETTE_STOPS = {
     [230, 141, 57],
     [247, 226, 139]
   ],
-  // cmocean-inspired rain bins (>= 1 mm/day); < 1 mm/day uses white/transparent treatment
+  // Rain bands (>= 1 mm/day), lightness rises with rain. Drier than 1 mm/day is DRY_RGB.
   rain: [
-    [22, 78, 99],
-    [14, 116, 144],
-    [20, 158, 166],
-    [46, 196, 182],
-    [110, 224, 198],
-    [167, 243, 208],
-    [220, 250, 185],
-    [253, 230, 138]
+    [23, 58, 94],
+    [23, 87, 134],
+    [24, 119, 168],
+    [30, 154, 192],
+    [56, 188, 198],
+    [121, 214, 189],
+    [185, 234, 180],
+    [244, 249, 184]
   ],
   speed: [
     [15, 23, 42],
@@ -42,25 +45,33 @@ export const PALETTE_STOPS = {
     [250, 204, 21]
   ],
   dense: [
-    [30, 41, 59],
-    [51, 65, 85],
-    [100, 116, 139],
-    [148, 163, 184],
-    [226, 232, 240]
+    [30, 27, 58],
+    [51, 47, 102],
+    [75, 74, 143],
+    [106, 104, 173],
+    [141, 138, 198],
+    [178, 175, 220],
+    [214, 212, 238],
+    [244, 243, 251]
   ],
   diff: [
-    [33, 102, 172],
-    [103, 169, 207],
-    [148, 163, 184],
-    [239, 138, 98],
-    [178, 24, 43]
+    [168, 228, 255],
+    [79, 176, 238],
+    [42, 109, 179],
+    [43, 52, 69],
+    [156, 65, 54],
+    [229, 121, 79],
+    [255, 208, 166]
   ],
   haline: [
-    [11, 19, 43],
-    [28, 37, 65],
-    [58, 80, 107],
-    [91, 192, 190],
-    [194, 248, 203]
+    [34, 29, 94],
+    [29, 74, 142],
+    [31, 108, 140],
+    [47, 140, 134],
+    [82, 169, 121],
+    [140, 196, 101],
+    [205, 219, 108],
+    [248, 236, 156]
   ],
   ice: [
     [11, 18, 32],
@@ -69,13 +80,15 @@ export const PALETTE_STOPS = {
     [168, 218, 220],
     [241, 250, 238]
   ],
-  // Diverging cmocean balance: negative -> neutral grey (0) -> positive
+  // Diverging: blue (negative) -> dark neutral (0) -> orange (positive); lightness rises away from zero on both sides
   balance: [
-    [33, 102, 172],
-    [103, 169, 207],
-    [148, 163, 184],
-    [239, 138, 98],
-    [178, 24, 43]
+    [168, 228, 255],
+    [79, 176, 238],
+    [42, 109, 179],
+    [43, 52, 69],
+    [156, 65, 54],
+    [229, 121, 79],
+    [255, 208, 166]
   ],
   BrBG: [
     [140, 81, 10],
@@ -119,6 +132,8 @@ function parseCssOrTuple(stop) {
   return null;
 }
 
+const _namedStops = new Map(); // parsed once per named ramp: the map asks for thousands of colours per frame
+
 export function resolveRampStops(ramp) {
   if (Array.isArray(ramp)) {
     const parsed = ramp.map(parseCssOrTuple).filter(Boolean);
@@ -126,10 +141,12 @@ export function resolveRampStops(ramp) {
     if (parsed.length === 1) return [parsed[0], parsed[0]];
   }
   if (typeof ramp === "string" && PALETTE_STOPS[ramp]) {
-    return PALETTE_STOPS[ramp].map(([r, g, b]) => ({
-      rgb: [r, g, b],
-      css: `rgb(${r}, ${g}, ${b})`
-    }));
+    let stops = _namedStops.get(ramp);
+    if (!stops) {
+      stops = PALETTE_STOPS[ramp].map(([r, g, b]) => ({ rgb: [r, g, b], css: `rgb(${r}, ${g}, ${b})` }));
+      _namedStops.set(ramp, stops);
+    }
+    return stops;
   }
   return PALETTE_STOPS.dense.map(([r, g, b]) => ({
     rgb: [r, g, b],
@@ -145,9 +162,15 @@ function lerpRgb(c0, c1, t) {
   ];
 }
 
+const _rgbLists = new WeakMap();
+
 function sampleStops(stops, t) {
   const clamped = Math.max(0, Math.min(1, t));
-  const rgbs = stops.map((s) => s.rgb).filter(Boolean);
+  let rgbs = _rgbLists.get(stops);
+  if (!rgbs) {
+    rgbs = stops.map((s) => s.rgb).filter(Boolean);
+    _rgbLists.set(stops, rgbs);
+  }
   if (rgbs.length === 0) return [148, 163, 184];
   if (rgbs.length === 1) return rgbs[0];
   const scaled = clamped * (rgbs.length - 1);
@@ -213,14 +236,10 @@ export function buildLegendCss(spec) {
   const ramp = spec?.ramp;
   const stops = resolveRampStops(ramp);
   if (ramp === "rain") {
-    const dry = `rgb(${DRY_RGB.join(", ")})`;
-    const parts = [`${dry} 0%`, `${dry} 11%`];
-    const n = stops.length;
-    stops.forEach((s, i) => {
-      const p0 = (11 + (i / n) * 89).toFixed(1);
-      const p1 = (11 + ((i + 1) / n) * 89).toFixed(1);
-      parts.push(`${s.css} ${p0}%`, `${s.css} ${p1}%`);
-    });
+    const n = stops.length + 1; // the dry band and one band per colour, all the same width
+    const at = (k) => ((k / n) * 100).toFixed(3);
+    const bands = [`rgb(${DRY_RGB.join(", ")})`, ...stops.map((s) => s.css)];
+    const parts = bands.flatMap((css, k) => [`${css} ${at(k)}%`, `${css} ${at(k + 1)}%`]);
     return `linear-gradient(90deg, ${parts.join(", ")})`;
   }
   return `linear-gradient(90deg, ${stops.map((s) => s.css).join(", ")})`;

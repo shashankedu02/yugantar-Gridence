@@ -25,12 +25,16 @@ The dashboard connects to `http://localhost:8000` (editable in the top bar; pres
 The served model needs `torch` (a CPU build is enough; no GPU is used). If `torch` or the checkpoint cannot be loaded, the server still starts, serves DAP and says so in `model_name`.
 
 ## Using the dashboard
-1. Pick a **case** (3 real input days from 2018–2019, or the labelled synthetic test input).
-2. Pick a shock: **Warm Bay of Bengal**, **Monsoon Stall**, none, or **Custom shock** (a rectangle, or a smooth blob you can centre by clicking the map).
-3. **Run.** The baseline and then the scenario are computed live by the server. Controls are locked while it runs.
-4. Compare **Baseline / Scenario / Difference**, scrub or play the days, click a cell for its time series, and read the shock-energy-by-distance chart and the **Monsoon Impact Lens**.
+The first screen shows the real last input day, labelled **not a forecast**, with a short "start here" card. **How to use** in the header explains the terms.
 
-Keys: ← → day · Space play/pause · 1–6 variable · B S D view · with the map focused, arrow keys move the selected cell.
+1. Pick a **weather case** (3 real input days from 2018–2019, or the labelled synthetic test input) and a **forecast length**.
+2. Pick a **shock**: none, **Warm Bay of Bengal**, **Monsoon Stall**, or **Custom shock** (a rectangle, or a smooth blob you can centre by clicking the map). While no forecast is on screen, the map previews what the shock will add; if a forecast is already shown, the shock area is outlined in yellow dashes. A custom shock takes effect only after **Add to shock**, and it replaces an official shock (the two are not combined).
+3. **Run.** The baseline and then the scenario are computed live by the server. Controls are locked while it runs. The map stays on **Baseline**: click **Scenario** or **Difference** above it. Both stay greyed out until a run with a shock has finished, and choosing a different shock removes the old scenario until you run again.
+4. Compare **Baseline / Scenario / Difference**, play or step through the days, point at a cell to read it, click it (or pick a city) for its chart, and read the shock-reach chart and the **Monsoon Impact Lens**.
+
+**Reading the map.** Each block is one 1° cell (about 110 km): that is the resolution of the data. The coastline and city names are reference geography; no political boundaries are drawn. A white outline marks where a shock was applied (yellow dashes: selected, not yet run); nothing is painted over the cells. Colour ranges are fitted to the run on screen, the same for all its days, and the legend says so, with the share of values beyond its ends. **Colours from different runs are therefore not comparable** unless you choose *Map options → Fixed*. *Smooth the colours* is a labelled display effect that adds no information.
+
+Optional keys: ← → day · Space play/pause · 1–6 variable · B S D view · with the map focused, arrow keys move the selected cell.
 
 Every forecast on screen is labelled with the model that answered the request. If the server changes or a request fails, old results are removed.
 
@@ -132,10 +136,11 @@ On four demo cases, 2.15.0+cpu gave forecasts bit-identical to the 2.14.1 build 
 ```bash
 pip install pytest requests third_party/monsoon_r1_kit-1.0.0-py3-none-any.whl -r requirements-train.txt
 python -m pytest -q                                  # Python: contract, engine, models, server, presets
-node --test tests/js/dashboard.test.mjs              # dashboard logic (Node 22 or newer)
+node --test tests/js/*.test.mjs                      # dashboard logic and colour scales (Node 22 or newer)
 node tests/e2e/integration.e2e.mjs                   # real browser + real server (Edge or Chrome)
 node tests/e2e/dashboard.e2e.mjs                     # colours, charts, layout, keyboard, safety
 node tests/e2e/scenarios.e2e.mjs                     # cases, shocks, impact numbers
+node tests/e2e/ux.e2e.mjs                            # first use, keyboard, legend, pointer at 1x-2x, narrow screens
 python -m monsoon_r1.schema_validator http://localhost:8000
 python tools/preflight.py                            # fails on any repo-scan flag
 ```

@@ -33,9 +33,13 @@ import {
   bindCanvasInteractions,
   bindTimelineControls,
   formatHoverReadout,
-  getFieldRange,
   getChannelSpec,
+  DOMAIN,
 } from "./render.js";
+import { differenceScale, valueScale } from "./scale.js";
+import { loadCoastline } from "./geo.js";
+import { CASE_NOTES, SHOCK_CARDS, VARIABLES, dateAfter, unitLabel } from "./copy.js";
+import { CUSTOM_LIMITS } from "./scenario.js";
 
 // ---------------------------------------------------------------------------
 // Store
@@ -95,10 +99,33 @@ const els = {
   runStatus: document.getElementById("run-status"),
   provenance: document.getElementById("result-provenance"),
   notice: document.getElementById("notice-text"),
+  stageTag: document.getElementById("stage-tag"),
+  stageText: document.getElementById("stage-text"),
+  caseInfo: document.getElementById("case-info"),
+  runHint: document.getElementById("run-hint"),
+  modelPlain: document.getElementById("model-plain"),
+  mapArea: document.getElementById("map-area"),
+  mapFrame: document.getElementById("map-frame"),
+  mapFade: document.getElementById("map-fade"),
+  mapTip: document.getElementById("map-tip"),
+  mapBadge: document.getElementById("map-badge"),
+  mapStart: document.getElementById("map-start"),
+  mapBusy: document.getElementById("map-busy"),
+  mapBusyText: document.getElementById("map-busy-text"),
+  latAxis: document.getElementById("lat-axis"),
+  lonAxis: document.getElementById("lon-axis"),
+  legendNote: document.getElementById("legend-note"),
+  prevDay: document.getElementById("prev-day-btn"),
+  nextDay: document.getElementById("next-day-btn"),
+  dayDate: document.getElementById("day-date"),
+  cellQuick: document.getElementById("cell-quick"),
 };
+
+let _statusResults = null; // the results the success message is about
 
 /** Progress and outcome of the current run (W3 status component, plain text if it is unavailable). */
 function showRunStatus(state, message) {
+  if (els.mapBusyText && state === "loading") els.mapBusyText.textContent = message;
   if (!els.runStatus) return;
   if (!message) {
     els.runStatus.textContent = "";
@@ -185,10 +212,10 @@ function renderFallbackLegend(el, { channel, unit, min, max, ramp }) {
   el.replaceChildren(node("span", "mt-mono mt-muted", `${channel} · ${unit} · [${min}, ${max}] · ramp:${ramp}`));
 }
 
-function renderLegendEl({ channel, unit, min, max, ramp }) {
+function renderLegendEl({ channel, unit, min, max, ramp }, options) {
   if (w3Legend?.renderLegend) {
     try {
-      w3Legend.renderLegend(els.legendContainer, { channel, unit, min, max, ramp });
+      w3Legend.renderLegend(els.legendContainer, { channel, unit, min, max, ramp }, options);
       return;
     } catch {
       // Fall through.
@@ -225,9 +252,9 @@ function renderFallbackEnergyByDistance(el, { distances, scenario }) {
   el.replaceChildren(node("pre", "mt-mono mt-fallback-pre", rows.join("\n")));
 }
 
-function renderSeriesChartEl(data) {
+function renderSeriesChartEl(data, options) {
   if (w3Charts?.renderSeries) {
-    try { w3Charts.renderSeries(els.seriesChartContainer, data); return; } catch {}
+    try { w3Charts.renderSeries(els.seriesChartContainer, data, options); return; } catch (err) { console.error(err); }
   }
   renderFallbackSeries(els.seriesChartContainer, data);
 }
@@ -310,11 +337,11 @@ function buildVariableSelector() {
   els.variableSelector.innerHTML = "";
   CHANNELS.forEach((ch, i) => {
     const btn = document.createElement("button");
-    btn.className = "mt-btn mt-tab";
+    btn.className = "mt-tab";
     btn.type = "button";
     btn.dataset.channelIndex = String(i);
-    btn.textContent = `${i + 1} ${ch.shortLabel}`;
-    btn.title = `${ch.label} (${ch.unit})`;
+    btn.append(node("small", "", i + 1), document.createTextNode(VARIABLES[i].name));
+    btn.title = `${VARIABLES[i].name} (${unitLabel(ch.unit)}). ${VARIABLES[i].help} Key ${i + 1}.`;
     btn.setAttribute("aria-label", `${ch.label}, ${ch.unit}`);
     btn.setAttribute("aria-pressed", i === 0 ? "true" : "false");
     btn.addEventListener("click", () => {
@@ -340,71 +367,71 @@ function buildScenarioControls() {
   if (!els.scenarioControls) return;
   const state = store.getState();
 
-  els.scenarioControls.innerHTML = "";
+  els.scenarioControls.replaceChildren();
+  const step = (number, title) => {
+    const box = node("section", "mt-step");
+    const heading = node("h2");
+    heading.append(node("span", "mt-num", number), document.createTextNode(title));
+    box.appendChild(heading);
+    els.scenarioControls.appendChild(box);
+    return box;
+  };
 
-  // Steps control
-  const stepsRow = document.createElement("div");
-  stepsRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:10px;";
-  const stepsLabel = document.createElement("label");
-  stepsLabel.className = "mt-muted";
-  stepsLabel.htmlFor = "steps-input";
-  stepsLabel.textContent = "Steps:";
-  const stepsInput = document.createElement("input");
+  // 2. Forecast length
+  const horizon = step(2, "Forecast length");
+  const row = node("div", "mt-horizon");
+  for (const days of [5, 10, 14]) {
+    const quick = node("button", "mt-btn", days);
+    quick.type = "button";
+    quick.title = `Forecast ${days} days`;
+    quick.dataset.horizon = String(days);
+    quick.addEventListener("click", () => store.setSteps(days));
+    row.appendChild(quick);
+  }
+  const stepsInput = node("input", "mt-input mt-mono");
   stepsInput.id = "steps-input";
   stepsInput.type = "number";
-  stepsInput.className = "mt-input mt-mono";
   stepsInput.min = "1";
   stepsInput.max = "30";
   stepsInput.value = String(state.steps);
-  stepsInput.style.width = "72px";
+  stepsInput.title = "Number of forecast days, 1 to 30";
+  stepsInput.setAttribute("aria-label", "Number of forecast days");
   stepsInput.addEventListener("change", () => store.setSteps(Number(stepsInput.value)));
-  stepsRow.appendChild(stepsLabel);
-  stepsRow.appendChild(stepsInput);
-  els.scenarioControls.appendChild(stepsRow);
+  row.append(stepsInput, node("span", "mt-hint", "days"));
+  horizon.appendChild(row);
 
-  // Preset buttons
-  const presetsLabel = document.createElement("p");
-  presetsLabel.className = "mt-muted";
-  presetsLabel.style.margin = "0 0 6px";
-  presetsLabel.textContent = "Shock preset:";
-  els.scenarioControls.appendChild(presetsLabel);
-
-  const presetsRow = document.createElement("div");
-  presetsRow.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;";
-
-  const noneBtn = document.createElement("button");
-  noneBtn.className = "mt-btn mt-tab";
-  noneBtn.type = "button";
-  noneBtn.dataset.presetId = "none";
-  noneBtn.textContent = "None / Clear";
-  noneBtn.setAttribute("aria-pressed", "true");
-  noneBtn.addEventListener("click", () => {
-    store.setShock("none", null);
-  });
-  presetsRow.appendChild(noneBtn);
-
-  for (const preset of Object.values(SHOCK_PRESETS)) {
-    const btn = document.createElement("button");
-    btn.className = "mt-btn mt-tab";
+  // 3. Shock
+  const shockStep = step(3, "Shock (optional)");
+  shockStep.appendChild(node("p", "mt-hint", "A change added to the last input day."));
+  const list = node("div", "mt-shock-list");
+  list.style.marginTop = "7px";
+  for (const id of ["none", ...Object.keys(SHOCK_PRESETS)]) {
+    const card = SHOCK_CARDS[id];
+    const btn = node("button", "mt-btn mt-shock");
     btn.type = "button";
-    btn.dataset.presetId = preset.id;
-    btn.title = preset.description;
-    btn.textContent = preset.label;
-    btn.setAttribute("aria-pressed", "false");
+    btn.dataset.presetId = id;
+    btn.title = id === "none" ? card.text : `${SHOCK_PRESETS[id].description}. Where: ${card.where}.`;
+    btn.append(node("b", "", card.title), node("span", "", card.text));
+    btn.setAttribute("aria-pressed", id === "none" ? "true" : "false");
     btn.addEventListener("click", () => {
+      // Choosing what is already chosen changes nothing, so it must not throw the forecast away.
+      if (id === store.getState().shock.presetId) return;
+      setCustomDirty(false);
+      if (id === "none") {
+        store.setShock("none", null);
+        return;
+      }
       const st = store.getState();
       try {
-        const pert = buildPresetPerturbation(preset.id, st.activeCase.init_states, st.meta?.grid || null);
-        store.setShock(preset.id, pert);
+        store.setShock(id, buildPresetPerturbation(id, st.activeCase.init_states, st.meta?.grid || null));
       } catch (err) {
         showError(`Preset error: ${err.message}`);
       }
     });
-    presetsRow.appendChild(btn);
+    list.appendChild(btn);
   }
-
-  els.scenarioControls.appendChild(presetsRow);
-  buildCustomShockPanel();
+  shockStep.appendChild(list);
+  buildCustomShockPanel(shockStep);
 }
 
 // ---------------------------------------------------------------------------
@@ -412,6 +439,15 @@ function buildScenarioControls() {
 // ---------------------------------------------------------------------------
 let _picking = false;
 let _components = [];
+let _customDirty = false; // custom values were edited after the last "Add to shock"
+const NOT_ADDED = "Custom values not added yet: press “Add to shock”. Run does not include them.";
+
+function setCustomDirty(on) {
+  _customDirty = on;
+  const msg = document.getElementById("custom-message");
+  if (msg && (on || msg.textContent === NOT_ADDED)) msg.textContent = on ? NOT_ADDED : "";
+  syncRunButtons(store.getState());
+}
 
 function field(labelText, control) {
   const wrap = node("label", "mt-field");
@@ -439,12 +475,20 @@ function select(id, options) {
   return el;
 }
 
-function buildCustomShockPanel() {
+function buildCustomShockPanel(parent) {
   const box = node("details", "mt-custom");
   box.id = "custom-shock";
-  box.appendChild(node("summary", "mt-btn", "Custom shock"));
-  const ch = select("custom-channel", CHANNELS.map((c, i) => [String(i), `${c.shortLabel} (${c.unit})`]));
+  box.appendChild(node("summary", "mt-btn", "Custom shock: design your own"));
+  const ch = select("custom-channel", CHANNELS.map((c, i) => [String(i), `${VARIABLES[i].name} (${unitLabel(c.unit)})`]));
   const op = select("custom-op", [["add", "add (units)"], ["scale_pct", "change by %"]]);
+  const limits = node("p", "mt-hint");
+  const showLimits = () => {
+    const [lo, hi] = CUSTOM_LIMITS[Number(ch.value)][op.value];
+    const unit = op.value === "add" ? unitLabel(CHANNELS[Number(ch.value)].unit) : "%";
+    limits.textContent = `Allowed: ${lo} to ${hi} ${unit}.`;
+  };
+  ch.addEventListener("change", showLimits);
+  op.addEventListener("change", showLimits);
   const shape = select("custom-shape", [["rectangle", "rectangle"], ["smooth", "smooth blob"]]);
   const rect = node("div", "mt-field-row");
   rect.id = "custom-rect";
@@ -473,10 +517,12 @@ function buildCustomShockPanel() {
   msg.setAttribute("role", "status");
   const list = node("ul", "mt-caption");
   list.id = "custom-list";
-  box.append(field("Variable", ch), field("Operation", op), field("Size of change", numberInput("custom-value", "2")),
+  for (const type of ["input", "change"]) box.addEventListener(type, () => setCustomDirty(true));
+  box.append(field("Variable", ch), field("Operation", op), field("Size of change", numberInput("custom-value", "2")), limits,
     field("Shape", shape), rect, blob, add, msg, list,
     node("p", "mt-muted mt-caption", "The change is added to the last input day only. Press Run to forecast it. Changes far outside real weather give unreliable forecasts."));
-  els.scenarioControls.appendChild(box);
+  parent.appendChild(box);
+  showLimits();
 }
 
 function setPicking(on) {
@@ -486,6 +532,7 @@ function setPicking(on) {
     btn.setAttribute("aria-pressed", String(on));
     btn.textContent = on ? "Click a map cell…" : "Pick centre on map";
   }
+  els.mapFrame?.classList.toggle("is-picking", on);
 }
 
 function pickCentre(cell) {
@@ -493,6 +540,7 @@ function pickCentre(cell) {
   document.getElementById("custom-lat").value = String(meta?.grid?.lat?.[cell.row] ?? GRID.latMin + cell.row);
   document.getElementById("custom-lon").value = String(meta?.grid?.lon?.[cell.col] ?? GRID.lonMin + cell.col);
   setPicking(false);
+  setCustomDirty(true);
 }
 
 function addCustomComponent() {
@@ -514,11 +562,14 @@ function addCustomComponent() {
       ? `${spec.latMin}–${spec.latMax}°N, ${spec.lonMin}–${spec.lonMax}°E`
       : `smooth, centre ${spec.lat}°N ${spec.lon}°E, radius ${spec.radiusCells}`;
     const what = `${ch.shortLabel} ${spec.value > 0 ? "+" : ""}${spec.value}${spec.op === "add" ? ` ${ch.unit}` : " %"}, ${where} (${result.cells} cells)`;
+    const replaced = continuing ? undefined : SHOCK_PRESETS[st.shock.presetId]?.label;
     _components = continuing ? [..._components, what] : [what];
+    _customDirty = false;
     store.setShock("custom", result.perturbation, `Custom: ${_components.join("; ")}`);
-    msg.textContent = result.clampedCells
+    msg.textContent = (result.clampedCells
       ? `Added. In ${result.clampedCells} cells the result is outside physical limits; the server moves it to the limit.`
-      : "Added. Press Run to forecast it.";
+      : "Added. Press Run to forecast it.")
+      + (replaced ? ` It replaces the ${replaced} shock: the two are not combined.` : "");
   } catch (err) {
     msg.textContent = err.message;
   }
@@ -540,6 +591,10 @@ function syncScenarioControls(state) {
   });
 
   syncCustomList(state);
+
+  els.scenarioControls.querySelectorAll("[data-horizon]").forEach((btn) => {
+    btn.setAttribute("aria-pressed", String(Number(btn.dataset.horizon) === state.steps));
+  });
 
   const stepsInput = document.getElementById("steps-input");
   if (stepsInput && document.activeElement !== stepsInput) {
@@ -572,6 +627,8 @@ function syncViewTabs(state) {
     // Disable scenario/difference tabs if no data
     if (view === "scenario") btn.disabled = !state.scenario?.rollout;
     if (view === "difference") btn.disabled = !state.difference;
+    btn.dataset.reason ??= btn.title;
+    btn.title = btn.disabled ? "Available after you choose a shock and press Run." : btn.dataset.reason;
   });
 }
 
@@ -579,60 +636,263 @@ function syncViewTabs(state) {
 // Map rendering
 // ---------------------------------------------------------------------------
 let _hoverCell = null;
+let _coastline = null;
+let _scaleMode = "run";
+let _rangeCache = null;
+let _legendKey = "";
+let _startDismissed = false;
+let _lastDay = 0;
+const mapOptions = { smooth: false, cellGrid: false, places: true };
 
-function redrawMap(state) {
-  const field = getActiveField(state);
+const hasPending = (state) => !state.scenario && !isZeroPerturbation(state.shock?.perturbation);
+const changesChannel = (delta, ch) => Boolean(delta && delta[ch].some((row) => row.some((v) => v !== 0)));
+
+/**
+ * What the map shows. Before a forecast it shows real numbers too: the last input day, or the change a selected shock
+ * will add. Both are labelled "not a forecast".
+ */
+function mapContent(state) {
+  const ch = state.channelIndex;
+  if (state.baseline) return { kind: state.view, field: getActiveField(state) };
+  if (hasPending(state) && changesChannel(state.shock.perturbation, ch)) {
+    return { kind: "shock", field: state.shock.perturbation[ch] };
+  }
+  return { kind: "input", field: state.activeCase?.init_states?.[2]?.[ch] || null };
+}
+
+/** Colour range for what is on the map; recomputed only when the data or the choice changes. */
+function mapRange(state, content) {
+  const ch = state.channelIndex;
+  const key = [content.kind === "scenario" ? "baseline" : content.kind, ch, _scaleMode, state.baseline, state.scenario,
+    state.difference, state.activeCase, content.kind === "shock" ? state.shock.perturbation : null];
+  if (_rangeCache && key.every((v, i) => v === _rangeCache.key[i])) return _rangeCache.range;
+  let range;
+  if (content.kind === "difference") range = differenceScale(ch, [state.difference], _scaleMode);
+  else if (content.kind === "shock") range = differenceScale(ch, [[state.shock.perturbation]], "run");
+  else if (content.kind === "input") range = valueScale(ch, [[state.activeCase?.init_states?.[2]].filter(Boolean)], _scaleMode);
+  else range = valueScale(ch, [state.baseline?.rollout, state.scenario?.rollout], _scaleMode);
+  _rangeCache = { key, range };
+  return range;
+}
+
+function drawMap(state) {
+  const content = mapContent(state);
+  const range = mapRange(state, content);
+  const pending = hasPending(state) ? state.shock.perturbation : null;
   renderMapCanvas(els.mapCanvas, {
-    field,
-    channelIndex: state.channelIndex,
-    view: state.view,
+    field: content.field,
+    range,
     meta: state.meta,
-    perturbation: state.shock?.perturbation || null,
+    coastline: _coastline,
+    perturbation: state.scenario ? state.runInfo?.perturbation : null,
+    pendingPerturbation: pending,
     selectedCell: state.selectedCell,
     hoverCell: _hoverCell,
-    showIsobars: state.channelIndex === 4, // msl
+    showIsobars: state.channelIndex === 4 && content.kind !== "difference" && content.kind !== "shock",
+    ...mapOptions,
   });
+  return { content, range };
+}
 
-  // Legend
-  const range = getFieldRange(state.channelIndex, state.view, state.meta);
-  renderLegendEl(range);
+/** "Wind U" keeps its capital U inside a sentence. */
+const inSentence = (name) => (name.startsWith("Wind") ? name.replace("Wind", "wind") : name.toLowerCase());
+
+function legendNote(content, range) {
+  const unit = unitLabel(range.unit);
+  const outside = range.clipped > 0
+    ? ` ${range.clipped < 0.0005 ? "<0.1" : (100 * range.clipped).toFixed(1)}% of ${content.kind === "input" || content.kind === "shock" ? "cells" : "cell-days"} lie beyond the ends and take the end colour.`
+    : "";
+  if (content.kind === "shock") return "The change the shock will add. Dark means unchanged.";
+  if (content.kind === "difference") {
+    const largest = `Largest change in the run: ${range.largest.toPrecision(3)} ${unit}.`;
+    return `${range.fitted ? "Range fitted to this run." : "Fixed range."} ${largest}${outside}`;
+  }
+  if (range.ramp === "rain") return "Fixed rain bands, the same for every run. Dark: under 1 mm/day.";
+  const basis = !range.fitted ? "Fixed range, the same for every run."
+    : content.kind === "input" ? "Range fitted to this day." : "Range fitted to this run; same for every day.";
+  return `${basis}${outside}`;
+}
+
+function updateLegend(state, content, range) {
+  const vertical = !window.matchMedia("(max-width: 800px)").matches;
+  const name = VARIABLES[state.channelIndex].name;
+  const title = content.kind === "difference" || content.kind === "shock" ? `Change in ${inSentence(name)}` : name;
+  const key = JSON.stringify([title, range.min, range.max, range.ramp, unitLabel(range.unit), vertical]);
+  if (key !== _legendKey) {
+    _legendKey = key;
+    renderLegendEl({ channel: range.channel, unit: unitLabel(range.unit), min: range.min, max: range.max, ramp: range.ramp },
+      { orientation: vertical ? "vertical" : "horizontal", title });
+  }
+  if (els.legendNote) {
+    els.legendNote.textContent = legendNote(content, range)
+      + (mapOptions.smooth ? " Colours are smoothed for display; each value belongs to a 1° cell." : "");
+  }
+}
+
+/** One sentence that always says what is on the map. */
+function updateStage(state, content, range) {
+  const ch = state.channelIndex;
+  const name = VARIABLES[ch].name;
+  const lower = inSentence(name);
+  const k = state.dayIndex + 1;
+  const date = (offset) => dateAfter(state.activeCase, offset);
+  const dayText = `forecast day ${k}${date(k) ? ` (${date(k)})` : ""}`;
+  const pending = hasPending(state);
+  let tag = "Input";
+  let text;
+  if (state.running) {
+    [tag, text] = ["Running", "Asking the server for the forecast…"];
+  } else if (content.kind === "input") {
+    text = state.activeCase?.isSynthetic
+      ? `Synthetic test numbers for ${lower}. Not real weather, and not a forecast.`
+      : `Real ${lower} on the last input day${date(0) ? `, ${date(0)}` : ""}. The forecast starts from here. This is not a forecast.`;
+    if (pending) {
+      const changed = VARIABLES.filter((_, i) => changesChannel(state.shock.perturbation, i)).map((v) => inSentence(v.name));
+      text = `The selected shock does not change ${lower} directly (it changes ${changed.join(" and ")}). Shown: the real input day, with the shock area dashed.`;
+    }
+  } else if (content.kind === "shock") {
+    [tag, text] = ["Shock preview", `What the shock will add to ${lower} on the last input day. Nothing is forecast yet. Press Run.`];
+  } else if (content.kind === "difference") {
+    let largest = 0;
+    for (const row of content.field || []) for (const v of row) if (Math.abs(v) > Math.abs(largest)) largest = v;
+    tag = "Difference";
+    text = `Scenario minus baseline, ${lower}, ${dayText}. Largest change today: ${largest >= 0 ? "+" : ""}${largest.toPrecision(3)} ${unitLabel(range.unit)}.`
+      + " Orange: higher with the shock. Blue: lower. Dark: little or no change.";
+  } else if (content.kind === "scenario") {
+    [tag, text] = ["Scenario", `${name} with your shock, ${dayText}. The white outline marks where the shock was applied.`];
+  } else {
+    tag = "Baseline";
+    text = `${name} without any shock, ${dayText}.`;
+    if (pending) text += " A new shock is selected (dashed outline): press Run to forecast it.";
+    else if (!state.scenario) text += " To compare, choose a shock and run.";
+    else text = `${name} without the shock, ${dayText}. To see the shock's effect, click Scenario${state.difference ? " or Difference" : ""} above.`;
+  }
+  if (els.stageTag) {
+    els.stageTag.textContent = tag;
+    els.stageTag.dataset.kind = state.running ? "idle" : content.kind === "shock" ? "shock" : content.kind;
+  }
+  if (els.stageText) els.stageText.textContent = text;
+  if (els.mapBadge) {
+    const notForecast = content.kind === "input" ? "Input day — not a forecast" : content.kind === "shock" ? "Shock preview — not a forecast" : "";
+    // A smoothed picture looks finer than the data, so it is always labelled on the map itself.
+    const label = [notForecast, mapOptions.smooth ? "Smoothed colours — data are 1° cells" : ""].filter(Boolean).join(" · ");
+    els.mapBadge.textContent = label;
+    els.mapBadge.hidden = !label || state.running;
+  }
+  els.mapStart?.classList.toggle("hidden", Boolean(_startDismissed || state.baseline || state.running || !state.meta));
+  els.mapBusy?.classList.toggle("hidden", !state.running);
+}
+
+/** A short cross-fade between days while playing. It blends two real frames; it shows no values in between. */
+function fadeFromPreviousFrame(state) {
+  const fade = els.mapFade;
+  if (!fade || !state.playing || state.dayIndex === _lastDay || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  fade.width = els.mapCanvas.width;
+  fade.height = els.mapCanvas.height;
+  fade.getContext("2d").drawImage(els.mapCanvas, 0, 0);
+  fade.style.transition = "none";
+  fade.style.opacity = "1";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fade.style.transition = "opacity 240ms linear";
+    fade.style.opacity = "0";
+  }));
+}
+
+function redrawMap(state) {
+  fadeFromPreviousFrame(state);
+  _lastDay = state.dayIndex;
+  const { content, range } = drawMap(state);
+  updateLegend(state, content, range);
+  updateStage(state, content, range);
+}
+
+/** Give the map all the room that is left, keeping one square per degree. */
+function fitMap() {
+  if (!els.mapArea || !els.mapCanvas) return;
+  const side = els.mapArea.querySelector(".mt-map-side");
+  const stackedSide = window.matchMedia("(max-width: 800px)").matches;
+  const flowHeight = window.matchMedia("(max-width: 1180px)").matches; // the page scrolls: height is not limited
+  const availW = els.mapArea.clientWidth - 34 - (stackedSide ? 0 : (side?.offsetWidth || 0) + 14);
+  const availH = flowHeight ? Math.max(360, window.innerHeight - 150) : els.mapArea.clientHeight - 16;
+  const cell = Math.max(5, Math.min(availW / 36, availH / 32, 24));
+  const w = Math.floor(36 * cell);
+  const h = Math.round((w * 32) / 36);
+  els.mapCanvas.style.width = `${w}px`;
+  els.mapCanvas.style.height = `${h}px`;
+  els.latAxis.style.height = `${h}px`;
+  els.lonAxis.style.width = `${w}px`;
+  els.mapArea.style.setProperty("--legend-h", `${Math.max(130, Math.min(330, h - 190))}px`);
+}
+
+function buildAxes() {
+  const label = (parent, text, property, share) => {
+    const span = node("span", "", text);
+    span.style[property] = `${share * 100}%`;
+    parent.appendChild(span);
+  };
+  for (let lat = 10; lat <= 35; lat += 5) label(els.latAxis, `${lat}°N`, "top", (DOMAIN.latMax - lat) / (DOMAIN.latMax - DOMAIN.latMin));
+  for (let lon = 70; lon <= 100; lon += 5) label(els.lonAxis, `${lon}°E`, "left", (lon - DOMAIN.lonMin) / (DOMAIN.lonMax - DOMAIN.lonMin));
+}
+
+function fillMapTip(cell) {
+  const text = formatHoverReadout({ cell, state: store.getState() }).split(" · ");
+  els.mapTip.replaceChildren(node("div", "mt-tip-title", text[0]), ...text.slice(2).map((line) => node("div", "mt-tip-row", line)));
+}
+
+function updateMapTip(cell, event) {
+  const tip = els.mapTip;
+  if (!tip) return;
+  if (!cell) {
+    tip.hidden = true;
+    return;
+  }
+  fillMapTip(cell);
+  tip.hidden = false;
+  const frame = els.mapFrame.getBoundingClientRect();
+  const x = event ? event.clientX - frame.left : ((cell.col + 0.5) / 36) * frame.width;
+  const y = event ? event.clientY - frame.top : (1 - (cell.row + 0.5) / 32) * frame.height;
+  tip.style.left = `${x + 16 + tip.offsetWidth > frame.width ? Math.max(0, x - 16 - tip.offsetWidth) : x + 16}px`;
+  tip.style.top = `${Math.max(0, Math.min(frame.height - tip.offsetHeight, y + 14))}px`;
 }
 
 // ---------------------------------------------------------------------------
 // Cell time-series chart for selected cell
 // ---------------------------------------------------------------------------
 function renderCellSeries(state) {
-  if (!state.selectedCell) {
-    if (els.seriesChartContainer) els.seriesChartContainer.textContent = "Click a grid cell to inspect its rollout.";
-    return;
-  }
+  const el = els.seriesChartContainer;
+  if (!el) return;
+  const empty = (text) => {
+    el.classList.add("mt-empty");
+    el.textContent = text;
+  };
+  if (!state.selectedCell) return empty("Click a grid cell to inspect its rollout.");
+  const steps = state.baseline?.rollout?.length || 0;
   const { row, col } = state.selectedCell;
+  const lat = state.meta?.grid?.lat?.[row] ?? GRID.latMin + row;
+  const lon = state.meta?.grid?.lon?.[col] ?? GRID.lonMin + col;
+  if (steps === 0) return empty(`Cell ${lat}°N ${lon}°E selected. Run a forecast to chart it.`);
+
   const ch = state.channelIndex;
   const spec = getChannelSpec(ch, state.meta);
-  const labels = [];
-  const baseVals = [];
-  const scenVals = [];
+  const labels = Array.from({ length: steps }, (_, d) => `Day ${d + 1}`);
+  const at = (rollout) => labels.map((_, d) => rollout?.[d]?.[ch]?.[row]?.[col] ?? null);
+  const series = [{ name: "Baseline", values: at(state.baseline.rollout) }];
+  if (state.scenario?.rollout) series.push({ name: "Scenario", values: at(state.scenario.rollout) });
+  if (state.climatology) series.push({ name: "Climatology", values: at(state.climatology) });
+  el.classList.remove("mt-empty");
+  renderSeriesChartEl({ labels, series, unit: `${VARIABLES[ch].name}, ${unitLabel(spec.unit)} at ${lat}°N ${lon}°E` },
+    { activeIndex: state.dayIndex, height: 220 });
+}
 
-  const steps = state.baseline?.rollout?.length || 0;
-  for (let d = 0; d < steps; d++) {
-    labels.push(`Day ${d + 1}`);
-    baseVals.push(state.baseline?.rollout?.[d]?.[ch]?.[row]?.[col] ?? NaN);
-    scenVals.push(state.scenario?.rollout?.[d]?.[ch]?.[row]?.[col] ?? NaN);
+function buildCellQuickPicks() {
+  if (!els.cellQuick) return;
+  // The 1° cell that CONTAINS the city (cells span whole degrees from 65°E and 6°N).
+  for (const [name, lat, lon] of [["New Delhi", 28.61, 77.21], ["Mumbai", 19.08, 72.88], ["Kolkata", 22.57, 88.36], ["Chennai", 13.08, 80.27], ["Bengaluru", 12.97, 77.59]]) {
+    const btn = node("button", "mt-btn", name);
+    btn.type = "button";
+    btn.addEventListener("click", () => store.setSelectedCell({ row: Math.floor(lat - DOMAIN.latMin), col: Math.floor(lon - DOMAIN.lonMin) }));
+    els.cellQuick.appendChild(btn);
   }
-
-  if (steps === 0) {
-    if (els.seriesChartContainer) els.seriesChartContainer.textContent = "Run a simulation to see time series.";
-    return;
-  }
-
-  const series = [{ name: "Baseline", values: baseVals }];
-  if (state.scenario?.rollout) series.push({ name: "Scenario", values: scenVals });
-  if (state.climatology) {
-    series.push({ name: "Climatology", values: labels.map((_, d) => state.climatology[d]?.[ch]?.[row]?.[col] ?? null) });
-  }
-  const lat = state.meta?.grid?.lat?.[row];
-  const lon = state.meta?.grid?.lon?.[col];
-  renderSeriesChartEl({ labels, series, unit: `${spec.id} ${spec.unit} at ${lat}°N ${lon}°E` });
 }
 
 // ---------------------------------------------------------------------------
@@ -642,6 +902,7 @@ function renderEnergyChart(state) {
   const el = els.energyChartContainer;
   if (!el) return;
   if (!state.difference) {
+    el.classList.add("mt-empty");
     el.textContent = "Run a baseline and a shock scenario to see how far the response reaches.";
     return;
   }
@@ -651,14 +912,16 @@ function renderEnergyChart(state) {
     el.textContent = "Energy by distance needs the channel standard deviations from the server (not available).";
     return;
   }
+  el.classList.remove("mt-empty");
   const chart = node("div");
   const share = result.outsideShare === null ? "no response on this day"
     : `${(100 * result.outsideShare).toFixed(1)}% of the response energy is outside the shocked area`;
-  const caption = node("div", "mt-mono mt-muted mt-caption",
+  const caption = node("div", "mt-hint mt-chart-note mt-caption",
     `Day ${state.dayIndex + 1}: mean of Σ(Δ/σ)² per cell, by distance in grid cells (0 = shocked area). ${share}.`);
   el.replaceChildren(chart, caption);
   renderEnergyChartEl(chart, { distances: result.labels, baseline: [], scenario: result.meanEnergy },
-    { unit: "Σ(Δ/σ)² per cell", scenarioLabel: "Scenario − baseline" });
+    { unit: "Σ(Δ/σ)² per cell", scenarioLabel: "Scenario − baseline", height: 220,
+      xTitle: "Distance from the shocked area in grid cells (0 = inside)" });
 }
 
 // ---------------------------------------------------------------------------
@@ -671,6 +934,7 @@ function renderImpact(state) {
   if (!el) return;
   if (!state.baseline?.rollout) {
     _impactKey = null;
+    el.classList.add("mt-empty");
     el.textContent = "Run a forecast to see rain and heat indicators.";
     return;
   }
@@ -678,6 +942,7 @@ function renderImpact(state) {
   const key = [state.baseline, state.scenario, state.climatology];
   if (_impactKey && key.every((v, i) => v === _impactKey[i])) return;
   _impactKey = key;
+  el.classList.remove("mt-empty");
   const perturbation = state.scenario ? state.runInfo?.perturbation : null;
   const numbers = impactNumbers({
     baseline: state.baseline.rollout,
@@ -692,7 +957,7 @@ function renderImpact(state) {
     rainShocked: Boolean(perturbation && perturbation[1].some((row) => row.some((v) => v !== 0))),
   });
   const heading = node("div", "mt-caption mt-muted", state.difference
-    ? "Value = scenario. B: baseline, S: scenario, Δ: scenario − baseline. All are proxies computed from this forecast."
+    ? "Big number: scenario. B: baseline, S: scenario, Δ: scenario − baseline. All are proxies computed from this forecast."
     : "Baseline forecast only. All are proxies computed from this forecast.");
   const cardBox = node("div");
   const chartTitle = node("div", "mt-caption mt-muted", "Core monsoon zone: daily rain by forecast day");
@@ -704,7 +969,7 @@ function renderImpact(state) {
   if (numbers.daily.scenario) series.push({ name: "Scenario", values: numbers.daily.scenario });
   if (numbers.daily.climatology) series.push({ name: "Climatology", values: numbers.daily.climatology });
   const data = { labels: numbers.daily.baseline.map((_, i) => `D${i + 1}`), series, unit: "mm/day" };
-  if (w3Charts?.renderSeries) w3Charts.renderSeries(chart, data);
+  if (w3Charts?.renderSeries) w3Charts.renderSeries(chart, data, { height: 180 });
   else renderFallbackSeries(chart, data);
 }
 
@@ -777,9 +1042,38 @@ function syncRunButtons(state) {
     els.runBtn.setAttribute("aria-busy", state.running ? "true" : "false");
   }
   if (els.clearShockBtn) els.clearShockBtn.disabled = busy || !hasShock;
+  if (els.runHint) {
+    els.runHint.textContent = state.running ? "Forecasting…" : _connecting ? "Connecting to the server…"
+      : !state.meta ? "Not connected. Run will try again."
+        : _customDirty ? NOT_ADDED
+          : hasShock ? "Two forecasts: without and with the shock." : "One forecast, no shock.";
+    els.runHint.classList.toggle("is-warning", _customDirty && !state.running);
+  }
   // Inputs of a run cannot change while it is in flight.
   for (const el of [els.caseSelect, els.apiInput, els.apiApplyBtn]) if (el) el.disabled = busy;
   els.scenarioControls?.querySelectorAll("button, input, select").forEach((el) => { el.disabled = busy; });
+}
+
+const MODEL_SENTENCES = {
+  localnet: "Unvalidated: our test results have not been independently reproduced. Treat forecasts and shock responses as exploratory.",
+  dap: "Fallback model: LocalNet is not in use. DAP treats each cell on its own, so it cannot spread a shock. Unvalidated.",
+  persistence: "This is not a model: it repeats the last day.",
+};
+
+function syncContext(state) {
+  if (els.modelPlain) {
+    els.modelPlain.textContent = state.meta ? MODEL_SENTENCES[state.meta.model?.mode] || "Unvalidated." : "Not connected, so the model is unknown.";
+  }
+  if (els.caseInfo) {
+    const c = state.activeCase;
+    const days = dateAfter(c, -2) ? `Input days: ${dateAfter(c, -2)} to ${dateAfter(c, 0)}.` : "";
+    els.caseInfo.textContent = [CASE_NOTES[c?.id] || "", days].filter(Boolean).join(" ");
+    els.caseInfo.title = c?.selection_rule ? `How this case was chosen: ${c.selection_rule}. ${c.source || ""}` : "";
+  }
+  const steps = state.baseline?.rollout?.length || 0;
+  if (els.prevDay) els.prevDay.disabled = !steps || state.dayIndex <= 0;
+  if (els.nextDay) els.nextDay.disabled = !steps || state.dayIndex >= steps - 1;
+  if (els.dayDate) els.dayDate.textContent = steps ? dateAfter(state.activeCase, state.dayIndex + 1) : "no forecast yet";
 }
 
 // ---------------------------------------------------------------------------
@@ -798,8 +1092,15 @@ function onStoreChange(state) {
   renderImpact(state);
   renderRunLog(state);
   renderProvenance(state);
+  syncContext(state);
   if (els.hoverReadout) {
     els.hoverReadout.textContent = formatHoverReadout({ cell: _hoverCell, state });
+  }
+  if (_hoverCell && els.mapTip && !els.mapTip.hidden) fillMapTip(_hoverCell);
+  // "Both forecasts received" is only true while those very results are still on screen.
+  if (_statusResults && (state.baseline !== _statusResults[0] || state.scenario !== _statusResults[1])) {
+    _statusResults = null;
+    showRunStatus(null, "");
   }
 }
 
@@ -924,7 +1225,12 @@ async function runSimulation() {
     }
     if (climatologyNote) warnings.push(climatologyNote);
     showNotice(warnings.join(" "));
-    showRunStatus("success", scenario ? "Baseline and scenario received from the server." : "Baseline received from the server.");
+    showRunStatus("success", !scenario ? "Baseline received from the server."
+      : comparable ? "Both forecasts received. Click Scenario or Difference above the map."
+        : "Both forecasts received. Click Scenario above the map.");
+    const shown = store.getState();
+    _statusResults = [shown.baseline, shown.scenario];
+    onStoreChange(store.getState());
   } catch (err) {
     store.failRun();
     store.appendRunLog(logEntry(stage.toLowerCase(), { error: err.message }));
@@ -958,11 +1264,17 @@ function handleShortcut(e) {
     return;
   }
   if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+  if (document.querySelector("dialog[open]")) return;
   const target = e.target;
   if (target instanceof Element) {
-    if (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
-    // Space and Enter keep their normal meaning on buttons, links and disclosure controls.
-    if ((e.key === " " || e.key === "Enter") && ["BUTTON", "A", "SUMMARY"].includes(target.tagName)) return;
+    // Only typing (text boxes, drop-down lists) switches the shortcuts off. A slider or checkbox does not.
+    const type = target.tagName === "INPUT" ? target.type : "";
+    const typing = target.isContentEditable || ["SELECT", "TEXTAREA"].includes(target.tagName)
+      || (type && !["range", "checkbox", "radio"].includes(type));
+    if (typing) return;
+    if (type === "range" && e.key.startsWith("Arrow")) return; // the slider moves itself
+    // Space and Enter keep their normal meaning on buttons, links, check boxes and disclosure controls.
+    if ((e.key === " " || e.key === "Enter") && (["BUTTON", "A", "SUMMARY"].includes(target.tagName) || type === "checkbox")) return;
   }
   const state = store.getState();
   const key = e.key.toLowerCase();
@@ -985,14 +1297,95 @@ function handleShortcut(e) {
 }
 
 // ---------------------------------------------------------------------------
+// Page chrome: sizing, map options, day buttons, help, focus handling
+// ---------------------------------------------------------------------------
+function bindChrome() {
+  let frame = 0;
+  const relayout = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      fitMap();
+      const state = store.getState();
+      redrawMap(state);
+      renderCellSeries(state);
+      renderEnergyChart(state);
+      _impactKey = null;
+      renderImpact(state);
+    });
+  };
+  fitMap();
+  redrawMap(store.getState());
+  let lastSize = "";
+  new ResizeObserver(() => {
+    const size = `${els.mapArea.clientWidth}x${els.mapArea.clientHeight}x${window.devicePixelRatio}`;
+    if (size !== lastSize) {
+      lastSize = size;
+      relayout();
+    }
+  }).observe(els.mapArea);
+  window.addEventListener("resize", relayout); // also fires when the zoom level or screen scaling changes
+
+  const option = (id, apply) => document.getElementById(id)?.addEventListener("change", (e) => {
+    apply(e.target);
+    redrawMap(store.getState());
+  });
+  option("scale-mode", (el) => { _scaleMode = el.value; });
+  option("opt-grid", (el) => { mapOptions.cellGrid = el.checked; });
+  option("opt-places", (el) => { mapOptions.places = el.checked; });
+  option("opt-smooth", (el) => { mapOptions.smooth = el.checked; });
+
+  els.prevDay?.addEventListener("click", () => store.setDayIndex(store.getState().dayIndex - 1));
+  els.nextDay?.addEventListener("click", () => store.setDayIndex(store.getState().dayIndex + 1));
+  document.getElementById("start-run-btn")?.addEventListener("click", () => runSimulation());
+  document.getElementById("start-close-btn")?.addEventListener("click", () => {
+    _startDismissed = true;
+    redrawMap(store.getState());
+  });
+  const help = document.getElementById("help-dialog");
+  document.getElementById("help-btn")?.addEventListener("click", () => help.showModal());
+  document.getElementById("help-close-btn")?.addEventListener("click", () => help.close());
+  document.getElementById("error-retry-btn")?.addEventListener("click", () => connectAndLoadMeta());
+  document.getElementById("notice-dismiss-btn")?.addEventListener("click", () => showNotice(""));
+
+  // After a MOUSE click a button gives up focus, so that Space and the arrow keys keep driving the map afterwards.
+  // Keyboard users (event.detail === 0) keep their focus where it is.
+  document.addEventListener("click", (e) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (e.detail > 0) target?.closest("button, summary")?.blur();
+    for (const pop of document.querySelectorAll("details.mt-pop[open]")) if (target && !pop.contains(target)) pop.open = false;
+  });
+  // The same for a drop-down chosen with the mouse: otherwise an arrow key would silently change the weather case.
+  for (const list of document.querySelectorAll("#case-select, #scale-mode")) {
+    let byPointer = false;
+    list.addEventListener("pointerdown", () => { byPointer = true; });
+    list.addEventListener("keydown", (e) => {
+      // After a mouse visit, an arrow or Escape means "leave the list", not "pick another weather case".
+      if (byPointer && (e.key.startsWith("Arrow") || e.key === "Escape")) {
+        e.preventDefault();
+        list.blur();
+      }
+      byPointer = false;
+    });
+    list.addEventListener("blur", () => { byPointer = false; });
+    list.addEventListener("change", () => { if (byPointer) list.blur(); });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
 async function init() {
   await loadW3Modules(); // fallbacks are used if any module is absent
+  loadCoastline().then((lines) => {
+    _coastline = lines;
+    if (lines) drawMap(store.getState());
+  });
   const { cases, problems } = await loadCases();
   if (cases.length) store.setCases([...cases, buildSyntheticCase()]);
 
   // Populate UI structure before API calls
+  buildAxes();
+  buildCellQuickPicks();
   buildVariableSelector();
   buildScenarioControls();
   populateCaseSelect();
@@ -1012,21 +1405,21 @@ async function init() {
 
   document.addEventListener("keydown", handleShortcut);
 
-  // Canvas hover / click / keyboard
+  // Canvas hover / click / keyboard. Pointing only redraws the map, not the whole page.
   bindCanvasInteractions(els.mapCanvas, {
     getSelected: () => store.getState().selectedCell,
-    onHover: (cell) => {
+    onHover: (cell, event) => {
       _hoverCell = cell;
-      if (els.hoverReadout) {
-        els.hoverReadout.textContent = formatHoverReadout({ cell, state: store.getState() });
-      }
-      redrawMap(store.getState());
+      if (els.hoverReadout) els.hoverReadout.textContent = formatHoverReadout({ cell, state: store.getState() });
+      drawMap(store.getState());
+      updateMapTip(cell, event);
     },
     onClick: (cell) => {
       if (_picking) pickCentre(cell);
       store.setSelectedCell(cell);
     },
   });
+  bindChrome();
 
   // API base URL controls
   if (els.apiInput) els.apiInput.value = getApiBaseUrl();
@@ -1055,6 +1448,7 @@ async function init() {
   // Clear shock button
   if (els.clearShockBtn) {
     els.clearShockBtn.addEventListener("click", () => {
+      setCustomDirty(false);
       store.setShock("none", null);
     });
   }

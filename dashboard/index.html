@@ -3,282 +3,248 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MonsoonTwin Console</title>
+  <title>MonsoonTwin — India weather shock simulator</title>
   <link rel="icon" href="data:," />
-  <!-- W3-owned stylesheets (loaded if present; fallback styles below keep core UI usable offline) -->
-  <link rel="stylesheet" href="css/tokens.css" />
-  <link rel="stylesheet" href="css/base.css" />
-  <link rel="stylesheet" href="css/layout.css" />
-  <link rel="stylesheet" href="css/components.css" />
-  <style id="w2-fallback-styles">
-    :root {
-      --mt-bg: #0b1220;
-      --mt-surface: #111a2b;
-      --mt-surface-2: #162238;
-      --mt-border: #1f2a3d;
-      --mt-text: #e6edf7;
-      --mt-muted: #93a4be;
-      --mt-teal: #2ec4b6;
-      --mt-amber: #f4a261;
-      --mt-danger: #ef5350;
-      --mt-warn: #f59e0b;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--mt-bg);
-      color: var(--mt-text);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-    .mt-topbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 16px;
-      background: var(--mt-surface);
-      border-bottom: 1px solid var(--mt-border);
-    }
-    .mt-brand { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
-    .mt-topbar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .mt-input, .mt-select, .mt-btn {
-      background: var(--mt-surface-2);
-      color: var(--mt-text);
-      border: 1px solid var(--mt-border);
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 13px;
-    }
-    .mt-btn { cursor: pointer; }
-    .mt-btn:hover:not(:disabled) { border-color: var(--mt-teal); }
-    .mt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .mt-btn-primary { background: var(--mt-teal); color: #051319; border-color: var(--mt-teal); font-weight: 600; }
-    .mt-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      border: 1px solid var(--mt-border);
-      background: var(--mt-surface-2);
-    }
-    .mt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mt-muted); display: inline-block; }
-    .mt-dot.ready { background: var(--mt-teal); }
-    .mt-dot.error { background: var(--mt-danger); }
-    .mt-dot.loading { background: var(--mt-amber); }
-    .mt-banners { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 6px; }
-    .mt-banner {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--mt-border);
-      background: var(--mt-surface);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 13px;
-    }
-    .mt-banner-warn { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.12); color: #fde68a; }
-    .mt-banner-error { border-color: rgba(239, 83, 80, 0.6); background: rgba(239, 83, 80, 0.14); color: #fecaca; }
-    .mt-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .mt-badge-unvalidated { background: rgba(244, 162, 97, 0.2); color: var(--mt-amber); border: 1px solid var(--mt-amber); }
-    .mt-badge-synthetic { background: rgba(46, 196, 182, 0.16); color: var(--mt-teal); border: 1px solid var(--mt-teal); }
-    .mt-layout {
-      display: grid;
-      grid-template-columns: 280px minmax(0, 1fr) 300px;
-      gap: 12px;
-      padding: 12px 16px;
-    }
-    .mt-panel {
-      background: var(--mt-surface);
-      border: 1px solid var(--mt-border);
-      border-radius: 8px;
-      padding: 12px;
-    }
-    .mt-panel h2 { margin: 0 0 8px; font-size: 14px; color: var(--mt-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .mt-stage-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-    .mt-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-    .mt-tab[aria-pressed="true"] { border-color: var(--mt-teal); background: rgba(46, 196, 182, 0.18); }
-    .mt-canvas-wrap {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #070c16;
-      border: 1px solid var(--mt-border);
-      border-radius: 6px;
-      min-height: 360px;
-      overflow: hidden;
-    }
-    #map-canvas { max-width: 100%; height: auto; display: block; }
-    .mt-dock {
-      margin: 0 16px 16px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .mt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-    .mt-muted { color: var(--mt-muted); }
-    .hidden { display: none !important; }
-    /* Compact shell: map, legend and timeline fit a 1366x768 screen. These rules load after the shared styles. */
-    .mt-topbar { position: static; min-height: 0; padding: 6px 16px; }
-    .mt-topbar .mt-select, .mt-topbar .mt-input { width: auto; }
-    #case-select { width: 230px !important; text-overflow: ellipsis; }
-    #api-base-input { width: 200px; }
-    /* Long model names must not wrap the bar; the banner below shows the full name. */
-    #api-status-text { display: inline-block; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-    .mt-banners { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 6px; }
-    .mt-banners .mt-banner, .mt-banners .mt-banner-strip { padding-top: 3px; padding-bottom: 3px; }
-    .mt-layout { padding-top: 8px; padding-bottom: 8px; align-items: start; }
-    .mt-layout .mt-panel { padding: 8px 12px; }
-    .mt-stage { gap: 0; }
-    .mt-stage-header { margin-bottom: 4px; }
-    .mt-stage-header .mt-btn { padding: 3px 8px; font-size: 12px; }
-    #result-provenance { font-size: 11px; }
-    .mt-canvas-wrap { min-height: 0; }
-    #map-canvas {
-      height: clamp(240px, calc(100vh - 372px), 560px);
-      width: auto;
-      max-width: 100%;
-      aspect-ratio: 36 / 32;
-      object-fit: contain;
-    }
-    #map-canvas:focus-visible { outline: 2px solid #2ec4b6; outline-offset: -2px; }
-    #map-hover-readout { font-size: 11px; margin-top: 4px !important; }
-    #legend-container { margin-top: 4px !important; }
-    #legend-container .mt-legend { gap: 2px; padding: 4px 10px; }
-    #legend-container .mt-legend-bar { height: 9px; }
-    .mt-stage > div:last-child { margin-top: 6px !important; }
-    .mt-caption { font-size: 11px; }
-    .mt-custom { margin-bottom: 10px; }
-    .mt-custom > summary { display: inline-block; list-style: none; }
-    .mt-custom .mt-field { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 12px; }
-    .mt-custom .mt-input, .mt-custom .mt-select { width: 100%; padding: 4px 8px; }
-    .mt-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
-    .mt-field-row > .mt-btn { grid-column: 1 / -1; }
-    .mt-custom .mt-btn { margin-top: 8px; }
-    #custom-pick[aria-pressed="true"] { border-color: #f4a261; }
-    .mt-fallback-pre { font-size: 11px; overflow: auto; max-height: 120px; }
-    .mt-error-text { color: var(--mt-danger, #ef5350); }
-    #run-log { max-height: 120px; overflow: auto; font-size: 11px; }
-    @media (max-width: 780px) { #map-canvas { height: auto; width: 100%; } }
-    @media (max-width: 1180px) {
-      .mt-layout { grid-template-columns: 240px minmax(0, 1fr); }
-      .mt-right-rail { grid-column: 1 / -1; }
-    }
-    @media (max-width: 780px) {
-      .mt-layout { grid-template-columns: 1fr; }
-      .mt-dock { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="css/console.css" />
 </head>
 <body>
   <header class="mt-topbar">
-    <div class="mt-topbar-controls">
-      <span class="mt-brand">MonsoonTwin Console</span>
-      <span id="synthetic-badge" class="mt-badge mt-badge-synthetic">SYNTHETIC TEST INPUT</span>
-      <span id="unvalidated-badge" class="mt-badge mt-badge-unvalidated">Unvalidated</span>
+    <div class="mt-brand">
+      <svg class="mt-logo" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45" />
+        <path d="M5 19c4-5 7 4 11-1s7-6 11-1" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+        <path d="M8 12.5c3-3.5 5.5 2.5 8.5-.5s5-3.500 7.500-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6" />
+      </svg>
+      <div>
+        <h1>MonsoonTwin</h1>
+        <p>Change today’s weather over India, and compare the next days of forecast with and without the change.</p>
+      </div>
     </div>
-    <div class="mt-topbar-controls">
-      <label for="case-select" class="mt-muted">Case:</label>
-      <select id="case-select" class="mt-select" aria-label="Initial state case">
-        <option value="synthetic">SYNTHETIC TEST INPUT (Browser)</option>
-      </select>
-      <label for="api-base-input" class="mt-muted">API:</label>
-      <input id="api-base-input" class="mt-input mt-mono" type="url" value="http://localhost:8000" aria-label="API base URL" />
-      <button id="api-apply-btn" class="mt-btn" type="button">Connect</button>
+    <div class="mt-topbar-right">
+      <span id="synthetic-badge" class="mt-badge mt-badge-synthetic hidden">Synthetic test input</span>
+      <a id="unvalidated-badge" class="mt-badge mt-badge-unvalidated" href="#method" title="Our test results have not been independently reproduced. Treat forecasts and shock responses as exploratory.">Unvalidated</a>
       <span id="api-status-pill" class="mt-pill" role="status" aria-live="polite">
         <span id="api-status-dot" class="mt-dot"></span>
         <span id="api-status-text">Checking...</span>
       </span>
-      <span id="queue-status-pill" class="mt-pill mt-mono hidden">Queue: idle</span>
+      <span id="queue-status-pill" class="mt-pill hidden">Queue: idle</span>
+      <details id="connection" class="mt-pop">
+        <summary class="mt-btn">Connection</summary>
+        <div class="mt-pop-body">
+          <label for="api-base-input">Forecast server address</label>
+          <input id="api-base-input" class="mt-input mt-mono" type="url" value="http://localhost:8000" aria-label="API base URL" />
+          <button id="api-apply-btn" class="mt-btn" type="button">Connect</button>
+          <p>Start it with <code>python serve.py --port 8000</code>.</p>
+        </div>
+      </details>
+      <button id="help-btn" class="mt-btn" type="button" aria-haspopup="dialog">How to use</button>
     </div>
   </header>
 
   <section class="mt-banners" aria-label="System notices">
-    <div id="model-banner"></div>
-    <div class="mt-banner mt-banner-warn hidden" role="status"><span id="notice-text"></span></div>
+    <div class="mt-banner mt-banner-warn hidden" role="status">
+      <span id="notice-text"></span>
+      <span class="mt-banner-actions"><button id="notice-dismiss-btn" class="mt-btn" type="button">Dismiss</button></span>
+    </div>
     <div id="error-banner" class="mt-banner mt-banner-error hidden" role="alert">
       <span id="error-banner-text"></span>
-      <button id="error-dismiss-btn" class="mt-btn" type="button">Dismiss</button>
+      <span class="mt-banner-actions">
+        <button id="error-retry-btn" class="mt-btn" type="button">Reconnect</button>
+        <button id="error-dismiss-btn" class="mt-btn" type="button">Dismiss</button>
+      </span>
     </div>
   </section>
 
-  <main class="mt-layout">
-    <aside class="mt-panel mt-left-rail" aria-label="Scenario builder">
-      <h2>Scenario &amp; Run</h2>
-      <p class="mt-muted mt-caption">Keys: ← → day · Space play · 1–6 variable · B S D view · on the map, arrows move the cell.</p>
-      <div id="scenario-controls">
-        <p class="mt-muted">Loading controls… (JavaScript is required).</p>
+  <main class="mt-workspace">
+    <aside class="mt-panel mt-left-rail" aria-label="Set up a simulation">
+      <div class="mt-rail-scroll">
+        <section class="mt-step">
+          <h2><span class="mt-num">1</span> Weather case</h2>
+          <label class="mt-sr-only" for="case-select">Weather case</label>
+          <select id="case-select" class="mt-select" aria-label="Initial state case">
+            <option value="synthetic">SYNTHETIC TEST INPUT (Browser)</option>
+          </select>
+          <p id="case-info" class="mt-hint"></p>
+        </section>
+        <div id="scenario-controls">
+          <p class="mt-hint">Loading controls… (JavaScript is required).</p>
+        </div>
       </div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button id="run-btn" class="mt-btn mt-btn-primary" type="button" disabled>Run Simulation</button>
-        <button id="clear-shock-btn" class="mt-btn" type="button" disabled>Clear Shock</button>
+      <div class="mt-runbar">
+        <button id="run-btn" class="mt-btn mt-btn-primary mt-btn-run" type="button" disabled>Run Simulation</button>
+        <div class="mt-runbar-row">
+          <span id="run-hint" class="mt-hint">Connecting to the server…</span>
+          <button id="clear-shock-btn" class="mt-btn mt-btn-small" type="button" disabled>Clear Shock</button>
+        </div>
+        <div id="run-status" aria-live="polite"></div>
       </div>
-      <div id="run-status" style="margin-top: 10px;" aria-live="polite"></div>
     </aside>
 
-    <section class="mt-panel mt-stage" aria-label="Forecast map stage">
-      <div class="mt-stage-header">
-        <div class="mt-tabs" role="group" aria-label="Forecast view">
-          <button class="mt-btn mt-tab" data-view="baseline" aria-pressed="true" type="button">Baseline</button>
-          <button class="mt-btn mt-tab" data-view="scenario" aria-pressed="false" type="button">Scenario</button>
-          <button class="mt-btn mt-tab" data-view="difference" aria-pressed="false" type="button">Difference</button>
+    <section class="mt-panel mt-stage" aria-label="Forecast map">
+      <div class="mt-toolbar">
+        <div class="mt-segment" role="group" aria-label="Forecast view">
+          <button class="mt-tab" data-view="baseline" aria-pressed="true" type="button" title="Baseline: the forecast from the real input days, with no change. Key B.">Baseline</button>
+          <button class="mt-tab" data-view="scenario" aria-pressed="false" type="button" title="Scenario: the forecast after your shock. Key S.">Scenario</button>
+          <button class="mt-tab" data-view="difference" aria-pressed="false" type="button" title="Difference: scenario minus baseline. Key D.">Difference</button>
         </div>
-        <div class="mt-tabs" id="variable-selector" role="group" aria-label="Weather variable"></div>
+        <div class="mt-segment mt-variables" id="variable-selector" role="group" aria-label="Weather variable"></div>
       </div>
 
-      <div id="result-provenance" class="mt-mono mt-muted" role="status" style="margin-bottom: 6px;">No forecast on screen.</div>
+      <div class="mt-stage-info">
+        <span id="stage-tag" class="mt-tag" data-kind="idle">Start</span>
+        <span id="stage-text" role="status"></span>
+        <details id="map-options" class="mt-pop mt-pop-right">
+          <summary class="mt-btn mt-btn-small">Map options</summary>
+          <div class="mt-pop-body">
+            <label for="scale-mode">Colour range</label>
+            <select id="scale-mode" class="mt-select">
+              <option value="run">Fit to this run (all days)</option>
+              <option value="fixed">Fixed, same for every run</option>
+            </select>
+            <label class="mt-check"><input id="opt-grid" type="checkbox" /> Outline the 1° data cells</label>
+            <label class="mt-check"><input id="opt-places" type="checkbox" checked /> City and sea names</label>
+            <label class="mt-check"><input id="opt-smooth" type="checkbox" /> Smooth the colours</label>
+            <p>Smoothing only blends neighbouring values for display. The data stay at 1° (about 110 km).</p>
+          </div>
+        </details>
+      </div>
+      <div id="result-provenance" class="mt-provenance" role="status">No forecast on screen.</div>
 
-      <div class="mt-canvas-wrap">
-        <canvas id="map-canvas" width="576" height="512" tabindex="0" role="application" aria-label="India 1-degree weather grid. Arrow keys move the selected cell." aria-describedby="map-hover-readout"></canvas>
+      <div class="mt-map-area" id="map-area">
+        <div class="mt-map-grid" id="map-grid">
+          <div class="mt-lat-axis" id="lat-axis" aria-hidden="true"></div>
+          <div class="mt-map-frame" id="map-frame">
+            <canvas id="map-canvas" width="576" height="512" tabindex="0" role="application" aria-label="India 1-degree weather grid. Arrow keys move the selected cell." aria-describedby="map-hover-readout"></canvas>
+            <canvas id="map-fade" aria-hidden="true"></canvas>
+            <div id="map-tip" class="mt-tip" hidden></div>
+            <div id="map-badge" class="mt-map-badge" hidden></div>
+            <div id="map-busy" class="mt-map-busy hidden" aria-hidden="true"><span class="mt-spinner"></span><span id="map-busy-text">Running…</span></div>
+          </div>
+          <div class="mt-lon-axis" id="lon-axis" aria-hidden="true"></div>
+        </div>
+        <div class="mt-map-side">
+          <div id="legend-container"></div>
+          <p id="legend-note" class="mt-hint"></p>
+          <div class="mt-readout">
+            <span class="mt-readout-title">Cell readout</span>
+            <div id="map-hover-readout" aria-live="polite">Point at the map to read a cell.</div>
+          </div>
+        </div>
       </div>
 
-      <div id="map-hover-readout" aria-live="polite" class="mt-mono mt-muted" style="margin-top: 8px;">Hover or click a grid cell after running a simulation.</div>
-      <div id="legend-container" style="margin-top: 8px;"></div>
-
-      <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <button id="play-btn" class="mt-btn" type="button" disabled>Play</button>
-        <label for="day-slider" class="mt-muted">Lead Day:</label>
-        <input id="day-slider" type="range" min="1" max="10" value="1" disabled style="flex: 1; min-width: 140px;" />
-        <span id="day-label" class="mt-mono">Day 1 / 10</span>
+      <div class="mt-timeline">
+        <button id="prev-day-btn" class="mt-btn mt-btn-icon" type="button" disabled aria-label="Previous forecast day" title="Previous day (left arrow key)">‹</button>
+        <button id="play-btn" class="mt-btn mt-btn-play" type="button" disabled title="Play or pause all forecast days (Space)">Play</button>
+        <button id="next-day-btn" class="mt-btn mt-btn-icon" type="button" disabled aria-label="Next forecast day" title="Next day (right arrow key)">›</button>
+        <label for="day-slider" class="mt-sr-only">Forecast day</label>
+        <input id="day-slider" type="range" min="1" max="10" value="1" disabled />
+        <span class="mt-day">
+          <span id="day-label">Day 1 / 10</span>
+          <span id="day-date"></span>
+        </span>
       </div>
     </section>
 
-    <aside class="mt-panel mt-right-rail" aria-label="Metadata and Impact Lens">
-      <h2>Server &amp; Metadata</h2>
-      <div id="meta-summary" class="mt-mono">Connecting to server...</div>
-      <h2 style="margin-top: 14px;">Monsoon Impact Lens</h2>
-      <div id="impact-container" class="mt-muted">Waiting for rollout / climatology.</div>
+    <aside class="mt-panel mt-right-rail" aria-label="Model status and impact indicators">
+      <section id="map-start" class="mt-card mt-start hidden" aria-label="Getting started">
+        <h2>Start here</h2>
+        <p>The map shows <strong>real input weather</strong>, not yet a forecast.</p>
+        <ol>
+          <li>Pick a weather case.</li>
+          <li>Add a shock, or leave it out.</li>
+          <li>Run, then explore days and variables.</li>
+        </ol>
+        <button id="start-run-btn" class="mt-btn mt-btn-primary" type="button">Run forecast</button>
+        <button id="start-close-btn" class="mt-link" type="button">Hide this</button>
+      </section>
+      <section class="mt-card mt-model-card">
+        <h2>Model answering</h2>
+        <div id="model-banner"></div>
+        <p id="model-plain" class="mt-hint"></p>
+      </section>
+      <section>
+        <div class="mt-section-head">
+          <h2>Monsoon Impact Lens</h2>
+          <a href="#analytics" class="mt-link">Charts ↓</a>
+        </div>
+        <div id="impact-container" class="mt-empty">Run a forecast to see rain and heat indicators.</div>
+      </section>
     </aside>
   </main>
 
-  <section class="mt-dock" aria-label="Charts and run log">
-    <div class="mt-panel">
-      <h2>Cell Time Series</h2>
-      <div id="series-chart-container" class="mt-muted">Click a grid cell to inspect its rollout.</div>
-    </div>
-    <div class="mt-panel">
-      <h2>Shock Energy vs Distance &amp; Run Log</h2>
-      <div id="energy-chart-container" class="mt-muted">Run a baseline + scenario to inspect shock spread.</div>
-      <div id="run-log" class="mt-mono mt-muted" style="margin-top: 8px;"></div>
-    </div>
+  <section class="mt-analytics" id="analytics" aria-label="Analytics">
+    <article class="mt-panel mt-chart-panel">
+      <div class="mt-section-head">
+        <h2>Cell inspector</h2>
+        <div id="cell-quick" class="mt-chips" role="group" aria-label="Quick cell choice"></div>
+      </div>
+      <p class="mt-hint">One 1° cell across all forecast days, for the variable selected above the map. Click the map or pick a city. A city picks the cell that contains it, not a station.</p>
+      <div id="series-chart-container" class="mt-empty">Click a grid cell to inspect its rollout.</div>
+    </article>
+    <article class="mt-panel mt-chart-panel">
+      <div class="mt-section-head"><h2>How far the shock reaches</h2></div>
+      <p class="mt-hint">For the selected day: how much the forecast changed, by distance from the shocked area. All six variables are combined, each divided by its typical spread. A bigger bar means a bigger change.</p>
+      <div id="energy-chart-container" class="mt-empty">Run a baseline and a shock scenario to see how far the response reaches.</div>
+    </article>
   </section>
 
-  <!-- W2 application entry point: app.js wires all W2 modules and dynamically imports W3 ui/ modules. -->
+  <section class="mt-method" id="method" aria-label="Method and model transparency">
+    <article class="mt-panel">
+      <h2>How to read this</h2>
+      <dl>
+        <dt>Input days</dt><dd>Three consecutive days of past weather (ERA5 reanalysis). The forecast starts the day after.</dd>
+        <dt>Baseline</dt><dd>The forecast from those days, unchanged.</dd>
+        <dt>Shock</dt><dd>A change you add to the last input day only, in real units.</dd>
+        <dt>Scenario</dt><dd>The forecast after the shock.</dd>
+        <dt>Difference</dt><dd>Scenario minus baseline. Orange is higher, blue is lower, dark is no change.</dd>
+        <dt>Grid cell</dt><dd>1° square, about 110 km. Each value is an average over the cell and the day.</dd>
+      </dl>
+    </article>
+    <article class="mt-panel">
+      <h2>What makes the forecast</h2>
+      <p><strong>LocalNet C64</strong> is a small neural network that predicts the next day from the last three days, then repeats. It runs on this computer; no weather service is called.</p>
+      <p><strong>DAP</strong> (damped anomaly persistence) is the fallback: a simple statistical rule used if LocalNet cannot run. The line above the map names the model that answered each forecast.</p>
+      <p>Impact indicators are computed in your browser from the forecast on screen. Each is a proxy with its method and limitation.</p>
+    </article>
+    <article class="mt-panel mt-limits">
+      <h2>Limits you should know</h2>
+      <ul>
+        <li><strong>Unvalidated:</strong> no second person has reproduced our test results.</li>
+        <li>A shock response is what this model does. It is not proof of what the atmosphere would do.</li>
+        <li>In local tests some shocks did not spread, and one produced an implausible rain change at one place.</li>
+        <li>Detail fades at longer lead times, especially in rain. Heavy rain is poorly predicted.</li>
+        <li>Not station rain, not daily maximum temperature, <strong>not a flood or heatwave warning</strong>.</li>
+        <li>The coastline and city names are reference geography. They do not make the 1° data any finer. No political boundaries are drawn.</li>
+      </ul>
+    </article>
+    <article class="mt-panel mt-logs">
+      <details open>
+        <summary>Run log</summary>
+        <div id="run-log" class="mt-mono">No runs yet.</div>
+      </details>
+      <details>
+        <summary>Technical details</summary>
+        <div id="meta-summary" class="mt-mono">Connecting to server...</div>
+      </details>
+      <p class="mt-hint">Weather data: contains modified Copernicus Climate Change Service information (ERA5), CC BY 4.0. Coastline: Natural Earth, public domain.</p>
+    </article>
+  </section>
+
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <h2 id="help-title">How to use MonsoonTwin</h2>
+    <p>MonsoonTwin forecasts India’s daily weather on a 1° grid, and lets you ask “what if today were different here?”</p>
+    <ol>
+      <li><strong>Pick a weather case</strong> — three real past days.</li>
+      <li><strong>Choose how many days</strong> to forecast.</li>
+      <li><strong>Pick a shock</strong>, or none. The map shows where it applies before you run.</li>
+      <li><strong>Run.</strong> With a shock, two forecasts are made: without it (baseline) and with it (scenario).</li>
+      <li><strong>Explore:</strong> switch variables, move through the days or press Play, and open <em>Difference</em>.</li>
+      <li><strong>Inspect:</strong> click a cell for its chart, and read the impact indicators.</li>
+    </ol>
+    <p class="mt-hint">Keyboard (optional): ← → day · Space play/pause · 1–6 variable · B S D view. With the map focused, arrows move the selected cell.</p>
+    <button id="help-close-btn" class="mt-btn mt-btn-primary" type="button">Got it</button>
+  </dialog>
+
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

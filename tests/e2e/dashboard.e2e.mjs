@@ -70,7 +70,9 @@ try {
     const ctx = document.getElementById("map-canvas").getContext("2d");
     let n = 0, good = 0, worst = 0;
     for (let r = 1; r < 32; r += 2) for (let c = 1; c < 36; c += 2) {
-      const px = ctx.getImageData(c * 16 + 3, (31 - r) * 16 + 3, 1, 1).data;
+      // the same point inside each cell as before (3/16 from its top-left corner), at whatever size the canvas now is
+      const cv = ctx.canvas, kx = cv.width / 36, ky = cv.height / 32;
+      const px = ctx.getImageData(Math.floor((c + 3 / 16) * kx), Math.floor((31 - r + 3 / 16) * ky), 1, 1).data;
       const want = legendColour(field[r][c]);
       const d = Math.hypot(px[0] - want[0], px[1] - want[1], px[2] - want[2]);
       n++; if (d <= 6) good++; worst = Math.max(worst, d);
@@ -88,10 +90,10 @@ try {
   await b.click('.mt-tab[data-view="difference"]');
   for (const ch of [0, 5]) {
     await b.click(`[data-channel-index="${ch}"]`); await sleep(150);
-    // the shock outline is drawn over the shocked cells in this view, so compare outside it
+    // the shock marker is an outline with no fill, so shocked cells must match the legend too
     await b.eval(`window.__noop = 1`);
     const r = await colourCheck("difference", ch);
-    t.ok(r.good / r.n >= 0.78, `${CH[ch]} difference: map colour = legend colour outside the shock outline`, JSON.stringify(r));
+    t.ok(r.good / r.n >= 0.9, `${CH[ch]} difference: map colour = legend colour, shocked cells included`, JSON.stringify(r));
   }
 
   // ---- energy chart against an independent calculation -----------------------------------------------------
@@ -152,7 +154,7 @@ try {
   await b.eval(`document.querySelector('[data-channel-index="0"]').focus()`);
   const d0 = await day(); await b.key("ArrowRight", "ArrowRight", 39);
   t.ok((await day()) !== d0, "arrows still work after clicking a button", `${d0} -> ${await day()}`);
-  await b.eval(`document.getElementById("api-base-input").focus()`);   // typing here changes nothing until Connect
+  await b.eval(`document.getElementById("connection").open = true; document.getElementById("api-base-input").focus()`);   // typing here changes nothing until Connect
   const d1 = await day(); await b.key("ArrowRight", "ArrowRight", 39); await b.key("3", "Digit3", 51, { text: "3" });
   t.ok((await day()) === d1 && (await pressed('[data-channel-index="2"]')) === "false", "shortcuts are ignored while typing");
   await b.eval(`document.getElementById("map-canvas").focus()`);

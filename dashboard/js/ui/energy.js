@@ -2,40 +2,31 @@
  * MonsoonTwin UI Module — Shock Energy vs Distance
  * Contract: renderEnergyByDistance(el, data, options?)
  * Pure presentational ES module using dependency-free SVG.
- * Strict null/undefined/NaN handling (never coerces missing to 0).
+ * Strict null/undefined/NaN handling (never coerces missing to 0). Only the bars are <rect> elements.
  */
 
 import { toFiniteNumber } from "./colormap.js";
+import { attachReadout, chartWidth, formatNumber, svgEl } from "./chartkit.js";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function svgEl(tag, attrs = {}, text = null) {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v !== undefined && v !== null) node.setAttribute(k, String(v));
-  }
-  if (text !== null) node.textContent = String(text);
-  return node;
-}
+const BASELINE = "#338ced";
+const RESPONSE = "#e76624";
 
 /**
- * Render shock energy vs distance chart into `el`.
+ * Render shock energy vs distance into `el`.
  * @param {HTMLElement} el
- * @param {{distances?: number[], baseline?: Array<number|null>, scenario?: Array<number|null>}} data
- * @param {{unit?: string}} [options]
+ * @param {{distances?: Array<number|string>, baseline?: Array<number|null>, scenario?: Array<number|null>}} data
+ * @param {{unit?: string, scenarioLabel?: string, height?: number, xTitle?: string}} [options]
  */
 export function renderEnergyByDistance(el, data, options = {}) {
   if (!(el instanceof Element)) return;
-  el.innerHTML = "";
+  el.replaceChildren();
 
   const distances = Array.isArray(data?.distances) ? data.distances : [];
   const baseline = Array.isArray(data?.baseline) ? data.baseline : [];
   const scenario = Array.isArray(data?.scenario) ? data.scenario : [];
-
   const n = distances.length;
-  const allVals = [...baseline, ...scenario].map(toFiniteNumber).filter((v) => v !== null);
-
-  if (n === 0 || allVals.length === 0) {
+  const values = [...baseline, ...scenario].map(toFiniteNumber).filter((v) => v !== null);
+  if (n === 0 || values.length === 0) {
     const empty = document.createElement("div");
     empty.className = "mt-impact-meta";
     empty.textContent = "No shock energy-vs-distance data available.";
@@ -43,88 +34,77 @@ export function renderEnergyByDistance(el, data, options = {}) {
     return;
   }
 
-  const maxVal = Math.max(1e-6, ...allVals);
-  const W = 460;
-  const H = 160;
-  const padL = 42;
+  const maxVal = Math.max(1e-6, ...values);
+  const W = chartWidth(el);
+  const H = options.height || 200;
+  const padL = 46;
   const padR = 14;
-  const padT = 24;
-  const padB = 28;
+  const padT = 38;
+  const padB = options.xTitle ? 38 : 24;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
   const svg = svgEl("svg", {
-    class: "mt-chart-svg",
-    viewBox: `0 0 ${W} ${H}`,
-    role: "img",
-    "aria-label": "Shock energy by distance in grid cells"
+    class: "mt-chart-svg", viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img",
+    "aria-label": "Shock response energy by distance in grid cells. Use left and right arrows to read values.",
   });
-
-  svg.appendChild(svgEl("line", { x1: padL, y1: padT, x2: padL, y2: padT + plotH, stroke: "#28364F", "stroke-width": 1 }));
-  svg.appendChild(svgEl("line", { x1: padL, y1: padT + plotH, x2: padL + plotW, y2: padT + plotH, stroke: "#28364F", "stroke-width": 1 }));
-
-  svg.appendChild(svgEl("text", {
-    x: padL - 6, y: padT + 6, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace"
-  }, maxVal >= 10 ? maxVal.toFixed(1) : maxVal.toFixed(2)));
-  svg.appendChild(svgEl("text", {
-    x: padL - 6, y: padT + plotH, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace"
-  }, "0"));
+  const label = (v) => (v >= 10 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v.toPrecision(2));
+  for (const [share, text] of [[1, label(maxVal)], [0.5, label(maxVal / 2)], [0, "0"]]) {
+    const y = padT + plotH * (1 - share);
+    svg.appendChild(svgEl("line", { class: "mt-grid", x1: padL, y1: y, x2: padL + plotW, y2: y }));
+    svg.appendChild(svgEl("text", { class: "mt-axis", x: padL - 7, y: y + 3.5, "text-anchor": "end" }, text));
+  }
 
   // A series is named in the legend only if it has data.
   const hasBaseline = baseline.some((v) => toFiniteNumber(v) !== null);
-  if (hasBaseline) {
-    svg.appendChild(svgEl("text", { x: padL + 4, y: 14, fill: "#2EC4B6", "font-size": 11, "font-family": "monospace" }, "Baseline"));
-  }
-  svg.appendChild(svgEl("text", { x: padL + (hasBaseline ? 72 : 4), y: 14, fill: "#F4A261", "font-size": 11, "font-family": "monospace" },
-    options?.scenarioLabel || "Scenario Δ"));
-  if (options?.unit) {
-    svg.appendChild(svgEl("text", { x: W - padR, y: 14, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace" }, options.unit));
-  }
+  const name = options.scenarioLabel || "Scenario Δ";
+  let keyX = padL;
+  const key = (colour, text) => {
+    svg.appendChild(svgEl("line", { x1: keyX, y1: 10, x2: keyX + 12, y2: 10, stroke: colour, "stroke-width": 6 }));
+    svg.appendChild(svgEl("text", { class: "mt-key", x: keyX + 17, y: 14 }, text));
+    keyX += 17 + text.length * 6.6 + 18;
+  };
+  if (hasBaseline) key(BASELINE, "Baseline");
+  key(RESPONSE, name);
+  if (options.unit) svg.appendChild(svgEl("text", { class: "mt-axis", x: W - padR, y: 28, "text-anchor": "end" }, options.unit));
 
-  const slotW = plotW / n;
-  const barW = Math.max(4, Math.min(18, slotW * 0.34));
-
+  const slot = plotW / n;
+  const barW = Math.max(4, Math.min(22, slot * (hasBaseline ? 0.34 : 0.56)));
+  const bar = (v, x, colour) => {
+    if (v === null || v < 0) return;
+    // An actual zero is a 1.5 px tick; a missing value draws nothing.
+    const h = v === 0 ? 1.5 : Math.max(2, (v / maxVal) * plotH);
+    svg.appendChild(svgEl("rect", { x: x.toFixed(1), y: (padT + plotH - h).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1), rx: v === 0 ? 0 : 2, fill: colour }));
+  };
   for (let i = 0; i < n; i++) {
-    const cx = padL + slotW * (i + 0.5);
-    const bVal = toFiniteNumber(baseline[i]);
-    const sVal = toFiniteNumber(scenario[i]);
-
-    // Actual 0 renders a crisp 1.5px baseline tick; null/NaN renders nothing (missing)
-    if (bVal !== null && bVal >= 0) {
-      const h = bVal === 0 ? 1.5 : Math.max(2, (bVal / maxVal) * plotH);
-      svg.appendChild(svgEl("rect", {
-        x: (cx - barW - 1).toFixed(1),
-        y: (padT + plotH - h).toFixed(1),
-        width: barW.toFixed(1),
-        height: h.toFixed(1),
-        rx: bVal === 0 ? 0 : 2,
-        fill: "#2EC4B6",
-        "fill-opacity": "0.85"
-      }));
+    const cx = padL + slot * (i + 0.5);
+    bar(toFiniteNumber(baseline[i]), cx - barW - 1, BASELINE);
+    bar(toFiniteNumber(scenario[i]), hasBaseline ? cx + 1 : cx - barW / 2, RESPONSE);
+    if (slot >= 20 || i % 2 === 0) {
+      svg.appendChild(svgEl("text", { class: "mt-axis", x: cx.toFixed(1), y: padT + plotH + 15, "text-anchor": "middle" }, String(distances[i] ?? "")));
     }
-
-    if (sVal !== null && sVal >= 0) {
-      const h = sVal === 0 ? 1.5 : Math.max(2, (sVal / maxVal) * plotH);
-      svg.appendChild(svgEl("rect", {
-        x: (hasBaseline ? cx + 1 : cx - barW / 2).toFixed(1),
-        y: (padT + plotH - h).toFixed(1),
-        width: barW.toFixed(1),
-        height: h.toFixed(1),
-        rx: sVal === 0 ? 0 : 2,
-        fill: "#F4A261",
-        "fill-opacity": "0.88"
-      }));
-    }
-
-    svg.appendChild(svgEl("text", {
-      x: cx.toFixed(1),
-      y: H - 8,
-      "text-anchor": "middle",
-      fill: "#8A99B3",
-      "font-size": 10,
-      "font-family": "monospace"
-    }, String(distances[i] ?? "")));
   }
+  if (options.xTitle) svg.appendChild(svgEl("text", { class: "mt-axis", x: padL + plotW / 2, y: H - 5, "text-anchor": "middle" }, options.xTitle));
 
+  const cross = svgEl("line", { class: "mt-cross", x1: 0, y1: padT, x2: 0, y2: padT + plotH, visibility: "hidden" });
+  svg.appendChild(cross);
   el.appendChild(svg);
+
+  attachReadout(el, svg, {
+    count: n,
+    indexAt: (x) => Math.max(0, Math.min(n - 1, Math.floor((x - padL) / slot))),
+    xOf: (i) => padL + slot * (i + 0.5),
+    rows: (i) => ({
+      title: i === 0 ? "Inside the shocked area" : `${distances[i]} cells from the shocked area`,
+      lines: [[`${name} (mean per cell)`, formatNumber(toFiniteNumber(scenario[i]) ?? NaN), RESPONSE]],
+    }),
+    mark: (i) => {
+      cross.setAttribute("visibility", i === null ? "hidden" : "visible");
+      if (i !== null) {
+        const x = padL + slot * (i + 0.5);
+        cross.setAttribute("x1", x);
+        cross.setAttribute("x2", x);
+      }
+    },
+  });
 }

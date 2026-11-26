@@ -1,7 +1,8 @@
 /**
  * MonsoonTwin UI Module — Monsoon Impact Lens Cards
  * Contract: renderImpactCards(el, indicators, options?)
- * Pure presentational ES module. Preserves proxy disclosures and "ⓘ method" popovers.
+ * Pure presentational ES module. Preserves proxy disclosures and the "method" popovers.
+ * A change is shown without good/bad colouring: the numbers are model scenarios, not judgements.
  */
 
 function statusBadgeClass(status) {
@@ -19,6 +20,13 @@ function formatValue(val, unit) {
   return unit ? `${str} ${unit}` : str;
 }
 
+function el_(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
 /**
  * Render Impact Lens indicator cards into `el`.
  * @param {HTMLElement} el
@@ -26,18 +34,12 @@ function formatValue(val, unit) {
  */
 export function renderImpactCards(el, indicators) {
   if (!(el instanceof Element)) return;
-  el.innerHTML = "";
-
-  const list = document.createElement("div");
-  list.className = "mt-impact-list";
+  el.replaceChildren();
+  const list = el_("div", "mt-impact-list");
 
   if (!Array.isArray(indicators) || indicators.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "mt-impact-card";
-    const msg = document.createElement("span");
-    msg.className = "mt-impact-meta";
-    msg.textContent = "No impact indicators available.";
-    empty.appendChild(msg);
+    const empty = el_("div", "mt-impact-card");
+    empty.appendChild(el_("span", "mt-impact-meta", "No impact indicators available."));
     list.appendChild(empty);
     el.appendChild(list);
     return;
@@ -45,87 +47,50 @@ export function renderImpactCards(el, indicators) {
 
   for (const item of indicators) {
     if (!item || typeof item !== "object") continue;
-
-    const card = document.createElement("article");
-    card.className = "mt-impact-card";
+    const card = el_("article", "mt-impact-card");
     if (item.id) card.dataset.indicatorId = String(item.id);
 
-    const top = document.createElement("div");
-    top.className = "mt-impact-top";
-
-    const title = document.createElement("h3");
-    title.className = "mt-impact-title";
-    title.textContent = typeof item.label === "string" && item.label ? item.label : "Indicator";
-    top.appendChild(title);
-
+    const top = el_("div", "mt-impact-top");
+    top.appendChild(el_("h3", "mt-impact-title", typeof item.label === "string" && item.label ? item.label : "Indicator"));
     if (item.note || item.limitation) {
-      const details = document.createElement("details");
-      details.className = "mt-method-details";
-
-      const summary = document.createElement("summary");
-      summary.className = "mt-method-summary";
-      summary.textContent = "ⓘ method";
-
-      const popover = document.createElement("div");
-      popover.className = "mt-popover";
-
-      if (item.note) {
-        const pNote = document.createElement("div");
-        pNote.textContent = String(item.note);
-        popover.appendChild(pNote);
-      }
+      const details = el_("details", "mt-method-details");
+      const summary = el_("summary", "mt-method-summary", "ⓘ method");
+      summary.title = "How this number is computed, and its limits";
+      const popover = el_("div", "mt-popover");
+      if (item.note) popover.appendChild(el_("div", "", String(item.note)));
       if (item.limitation) {
-        const pLim = document.createElement("div");
-        pLim.style.marginTop = item.note ? "6px" : "0";
-        const strong = document.createElement("strong");
-        strong.textContent = "Limitation: ";
-        pLim.append(strong, document.createTextNode(String(item.limitation)));
-        popover.appendChild(pLim);
+        const lim = el_("div", "mt-popover-limit");
+        lim.append(el_("strong", "", "Limitation: "), document.createTextNode(String(item.limitation)));
+        popover.appendChild(lim);
       }
-
       details.append(summary, popover);
       top.appendChild(details);
     }
 
-    const valRow = document.createElement("div");
-    valRow.className = "mt-impact-value mt-mono";
-    valRow.appendChild(document.createTextNode(formatValue(item.value, item.unit) + " "));
+    const valRow = el_("div", "mt-impact-value");
+    valRow.appendChild(document.createTextNode(`${formatValue(item.value, item.unit)} `));
+    if (item.status) valRow.appendChild(el_("span", statusBadgeClass(item.status), String(item.status)));
 
-    if (item.status) {
-      const statusBadge = document.createElement("span");
-      statusBadge.className = statusBadgeClass(item.status);
-      statusBadge.textContent = String(item.status);
-      valRow.appendChild(statusBadge);
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "mt-impact-meta";
-
+    const meta = el_("div", "mt-impact-meta");
     if (item.isProxy) {
-      const proxyBadge = document.createElement("span");
-      proxyBadge.className = "mt-badge";
-      proxyBadge.textContent = "Proxy";
-      meta.appendChild(proxyBadge);
+      const proxy = el_("span", "mt-badge", "Proxy");
+      proxy.title = "An indirect indicator computed from the forecast grid. Not an official or station measure.";
+      meta.appendChild(proxy);
     }
-
     if (item.baseline !== undefined || item.scenario !== undefined || item.delta !== undefined) {
       const parts = [];
       if (item.baseline !== undefined) parts.push(`B: ${item.baseline}`);
       if (item.scenario !== undefined) parts.push(`S: ${item.scenario}`);
       if (item.delta !== undefined) parts.push(`Δ: ${item.delta}`);
-      const cmp = document.createElement("span");
-      cmp.className = "mt-mono";
-      cmp.textContent = parts.join(" · ");
+      const cmp = el_("span", "mt-impact-compare", parts.join(" · "));
+      cmp.title = "B: baseline forecast. S: scenario (with the shock). Δ: scenario minus baseline.";
       meta.appendChild(cmp);
     } else if (item.note && !item.limitation) {
-      const notePreview = document.createElement("span");
-      notePreview.textContent = String(item.note);
-      meta.appendChild(notePreview);
+      meta.appendChild(el_("span", "", String(item.note)));
     }
 
     card.append(top, valRow, meta);
     list.appendChild(card);
   }
-
   el.appendChild(list);
 }
