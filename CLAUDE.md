@@ -104,7 +104,7 @@ The full rules are in `docs/COMPETITION_REQUIREMENTS.md`. The interfaces are in 
 - Every model change is judged by `eval/harness.py` and `eval/shock_battery.py` (kit scoring functions), not by eye.
 - Every PR: `pytest -q` is green, and the kit validator passes if `serve.py` or `twin/` changed.
   - **Clean-export repo scan:** from G-DAP (H5.5) on, every PR must give 15/15. Before that, a PR may show no flag beyond the expected missing checkpoint, frontend or trainer (an H1.5-state repo scored 2.5 with only "no model checkpoint"). Never add dummy weights to silence it.
-- Git: branches `b1/*`, `b2/*`, `aud/*`; Conventional Commits; never push to `main`; AUD merges; tag green states.
+- Git: branches `w1/*`, `w2/*`, `w3/*`; Conventional Commits; never push to `main`; every PR is reviewed by someone other than its author and merged by W2 (W2's own PRs by W1); run `python tools/preflight.py` first; tag green states.
 - **Freezes:**
   - calibration ends and **nothing in `weights/` or `twin/` changes after H17**
   - no code changes after H20
