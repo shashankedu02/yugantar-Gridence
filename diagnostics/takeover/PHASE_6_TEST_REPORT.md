@@ -40,7 +40,7 @@ It removed "no model checkpoint" from its failures, so it passed a tree scoring 
 | Loading code | `torch.load(weights_only=True)`; NumPy loads without pickle; no `eval`, `pickle`, shell calls |
 | Inference network imports | None |
 | Dashboard | No external URLs; server and file text is never parsed as HTML (tested with a hostile header) |
-| **Open: older public history** | See the Phase 0 report. Owner action |
+| Older history | One item with the owner (reported privately) |
 | Accepted by design | The server listens on all interfaces without authentication and allows any origin, as the contract and the separate dashboard require. Do not expose it to an untrusted network |
 | P3 | Request body size is not limited |
 
@@ -57,4 +57,4 @@ It removed "no model checkpoint" from its failures, so it passed a tree scoring 
 | Scan genuinely clean | **Met** |
 | Offline inference | **Met** within the stated method |
 | Performance measured | **Met** on this PC |
-| No secret or unwanted artifact committed on this branch | **Met**. The older history item is not from this branch and remains the owner's action |
+| No secret or unwanted artifact committed on this branch | **Met** |

@@ -153,13 +153,7 @@ export function createStore() {
     shock: {
       presetId: "none",
       perturbation: null,
-      brush: {
-        channelIndex: 0,
-        op: "add",
-        value: 3.0,
-        radiusCells: 2,
-        shape: "box",
-      },
+      label: null,
     },
     baseline: null,
     scenario: null,
@@ -282,10 +276,6 @@ export function createStore() {
       if (state.runInfo) state.runInfo = { ...state.runInfo, scenario: null };
       notify();
       return true;
-    },
-    updateBrush(patch) {
-      Object.assign(state.shock.brush, patch);
-      notify();
     },
     beginRun() {
       if (state.running) return false;

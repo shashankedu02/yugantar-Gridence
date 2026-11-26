@@ -11,7 +11,7 @@
  *   ui/impact.js  → renderImpactCards(el, indicators:[{id,label,value,unit,status,note,isProxy}])
  */
 
-import { CHANNELS, DEFAULT_STEPS, GRID, SHOCK_PRESETS, getApiBaseUrl } from "./config.js";
+import { CHANNELS, GRID, SHOCK_PRESETS, getApiBaseUrl } from "./config.js";
 import { api, ApiError } from "./api.js";
 import {
   createStore,
@@ -23,7 +23,6 @@ import {
   buildSimulatePayload,
   clonePerturbation,
   addShockComponent,
-  createZeroPerturbation,
   isZeroPerturbation,
 } from "./scenario.js";
 import { loadCases } from "./cases.js";

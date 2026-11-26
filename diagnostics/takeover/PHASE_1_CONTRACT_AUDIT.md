@@ -41,7 +41,7 @@
 | R-07 | Public repo (PS, GEN) | GitHub API: public | Verified | | |
 | R-08 | Original work, built during the hackathon (PS) | Whether the pre-event Milestone 1 code is acceptable was never confirmed (CLAUDE.md status line) | **Unknown** | owner | Owner confirms with organisers |
 | R-09 | No shipped archives of past weather (PS) | Planned demo cases are a few 3-day input states. The kit scan accepts a 3-day case; organiser acceptance is unconfirmed | **Unknown** | owner | Keep to a few inputs, never targets; disclose |
-| R-10 | No secrets | One credential in old public history (owner informed) | **Gap** (owner action) | P0 | Owner revokes |
+| R-10 | No secrets | Current tree clean; one older-history item reported to the owner privately | **Owner action** | P0 | Owner confirms it is resolved |
 | R-11 | ERA5 attribution | In README on `main` | Verified (present) | | Keep |
 
 ## C. Product requirements
@@ -65,7 +65,7 @@
 | No blend toward climatology (§3.7) | None |
 | Guards (§3.8) | Input clamp after perturbation, per-step limit, final clamp |
 | DAP as fallback (§3.5) | Per-step and whole-request fallback in `engine.py`; selection only through `model_select.json` with hash checks |
-| Contradiction found | `docs/DECISION_LOG.md` D-28 says the old history was discarded; it was not (see Phase 0 §8) |
+| Contradiction found | One decision-log entry about repository history does not match the repository; reported to the owner privately |
 | API step range | We accept 1–30; the kit's maximum is 14. A superset, harmless |
 
 No frozen evaluation definition was changed.

@@ -67,7 +67,7 @@ No Docker, `gh` or Playwright. Installed PyTorch is a CUDA build (inference can 
 
 ## 8. Security
 - Pattern search of every new branch commit and the uncommitted files: no match.
-- Pattern search of **all history**: **one credential-like value exists in older public history**. Details were given to the project owner privately and are deliberately not in this file. **Owner action: revoke or rotate it; verify, do not assume.** No history rewrite has been or will be done without approval.
+- Older repository history: one security item was reported to the project owner privately. No history rewrite has been or will be done without approval.
 - No `.env` file or climate data file was found in any commit by name. Two early commits contain compiled Python cache files (clutter).
 
 ## 9. Master issue register
@@ -75,7 +75,7 @@ Severity: P0 blocks submission or serious security; P1 major function, contract 
 
 | ID | Sev | Phase | Issue and root cause | Depends on | Acceptance criterion |
 |---|---|---|---|---|---|
-| SEC-1 | P0 | owner | Credential in public history (committed script) | Key issuer | Owner confirms revocation |
+| SEC-1 | P0 | owner | Security item in older history (reported privately) | Owner | Owner confirms it is resolved |
 | I-01 | P0 | 2 | No branch contains a model; weights and engine changes never committed | | Clean export serves a real model; scan 15.0, no flags |
 | I-02 | P1 | 7 | README still says no code, weights or results exist | 2–6 | README steps work from a clean checkout |
 | I-03 | P1 | 7 | No technical brief | 2, 6 | Two-page PDF; every number traces to a report |
