@@ -43,7 +43,7 @@ async def simulate_endpoint(request: Request):
     t0 = time.perf_counter()
     try:
         body = await request.json()
-    except ValueError:
+    except (ValueError, RecursionError):      # RecursionError: absurdly deep nesting
         return JSONResponse({"error": "request body is not valid JSON"}, status_code=400)
     try:
         req = parse_simulate_request(body)
@@ -62,7 +62,7 @@ def meta():
 async def climatology_endpoint(request: Request):
     try:
         body = await request.json()
-    except ValueError:
+    except (ValueError, RecursionError):      # RecursionError: absurdly deep nesting
         return JSONResponse({"error": "request body is not valid JSON"}, status_code=400)
     try:
         doy_pair, steps = parse_climatology_request(body)

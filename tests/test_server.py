@@ -124,6 +124,14 @@ def test_non_json_body_gets_400(url):
     assert r.status_code == 400
 
 
+@pytest.mark.parametrize("path", [SIM_PATH, "/climatology"])
+def test_absurdly_deep_json_gets_400_not_500(url, path):
+    body = "[" * 20000 + "]" * 20000
+    r = requests.post(url + path, data=body, headers={"Content-Type": "application/json"}, timeout=10)
+    assert r.status_code == 400 and "error" in r.json()
+    assert requests.post(url + "/health", timeout=5).status_code == 200      # the server survives
+
+
 def test_nan_literal_in_json_is_rejected(url):
     text = '{"init_states": %s, "doy_sincos": [0.0, 1.0], "steps": 1}' % str(np.full((3, 6, 32, 36), np.nan).tolist()).replace("nan", "NaN")
     r = requests.post(url + SIM_PATH, data=text, headers={"Content-Type": "application/json"}, timeout=10)
