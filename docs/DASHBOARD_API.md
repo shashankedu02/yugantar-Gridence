@@ -62,4 +62,4 @@ Response `200`:
 `climatology[k]` is the climatological field for lead day k+1. `core_zone_rain_*` (core zone 18–28°N, 65–88°E) are `null` until the statistics exist. The whole call returns **503** until `weights/climatology.npz` exists; show "climatology not available yet" and disable anomaly views.
 
 ## 7. Demo input states
-`dashboard/cases/*.json` (W1 generates them from 2018–2019): `{"id": "...", "label": "...", "date_label": "...", "doy_sincos": [s, c], "init_states": [3,6,32,36]}`. They are inputs only; forecasts always come from `/simulate`. Until they exist, use a clearly labelled synthetic state (section 5).
+`dashboard/cases/index.json` lists the case files: `{"cases": ["name.json"]}`. Each file (written by `tools/make_demo_cases.py` from 2018–2019) is `{"id", "label", "date_label", "selection_rule", "source", "doy_sincos": [s, c], "init_states": [3,6,32,36]}`. They are inputs only; forecasts always come from `/simulate`, and the server never reads them. A clearly labelled synthetic state stays available (section 5).

@@ -7,6 +7,9 @@ python serve.py --port 8000                       # terminal 1
 python -m http.server 5500 -d dashboard           # terminal 2, then open http://localhost:5500
 ```
 
+## Modules
+`js/app.js` (wiring) · `api.js` (client, one request at a time) · `validate.js` (response checks) · `state.js` (store; one snapshot per run) · `scenario.js` (official and custom shocks) · `analysis.js` (energy by distance, impact proxies) · `cases.js` (demo inputs) · `render.js`, `contour.js` (map) · `ui/` (legend, charts, banner, impact cards, status; `ui/colormap.js` colours both map and legend).
+
 ## Who edits what
 | Path | Owner |
 |---|---|

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MonsoonTwin: project brief</title>
+<style>
+  @page { size: A4; margin: 11mm 12mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 9.4pt/1.34 "Segoe UI", Arial, sans-serif; color: #111; }
+  h1 { font-size: 15.5pt; margin: 0 0 1px; }
+  h2 { font-size: 10.8pt; margin: 8px 0 3px; color: #0b5d68; border-bottom: 1px solid #b9d6d9; padding-bottom: 1px; }
+  p { margin: 3px 0; }
+  ul { margin: 2px 0; padding-left: 15px; }
+  li { margin: 1px 0; }
+  .sub { color: #444; font-size: 8.8pt; }
+  .usp { background: #eef6f7; border-left: 3px solid #0b5d68; padding: 5px 8px; margin: 5px 0 2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.6pt; margin: 3px 0; }
+  th, td { border: 1px solid #c9c9c9; padding: 1.5px 5px; text-align: left; vertical-align: top; }
+  th { background: #f1f1f1; }
+  .num td:not(:first-child), .num th:not(:first-child) { text-align: right; }
+  .flow { display: flex; align-items: stretch; gap: 4px; margin: 4px 0; font-size: 8.3pt; }
+  .box { flex: 1; border: 1px solid #0b5d68; border-radius: 4px; padding: 3px 5px; text-align: center; }
+  .arrow { align-self: center; color: #0b5d68; font-weight: 700; }
+  .caveat { font-size: 8.2pt; color: #6a3b00; background: #fdf4e3; padding: 3px 6px; margin: 3px 0; }
+  .page + .page { break-before: page; }
+  img { width: 100%; border: 1px solid #999; display: block; }
+  .cols { display: flex; gap: 10px; }
+  .cols > div { flex: 1; }
+  code { font: 8.4pt Consolas, monospace; }
+</style>
+</head>
+<body>
+
+<section class="page">
+  <h1>MonsoonTwin: a live, offline digital twin of India's weather</h1>
+  <div class="sub">Yugaantar DevForge 2026 · Track 2 "Multiverse of Monsoon" · github.com/shashankedu02/yugantar-monsoon-kit</div>
+  <div class="usp"><b>USP: a twin you can interrogate and audit.</b> Pick real input days, paint a shock, and compare two live forecasts. Every result is labelled with the model that produced it, and every limit is stated where it affects the answer. It runs offline on a laptop: a 10-day request took at most 59 ms on 4 processors.</div>
+
+  <h2>System architecture and technical approach</h2>
+  <div class="flow">
+    <div class="box">3 days × 6 variables<br>32 × 36 grid (1°), day of year,<br>optional shock delta</div><div class="arrow">→</div>
+    <div class="box"><b>serve.py</b> (FastAPI)<br>validates, adds the delta to the<br>last day, clamps to limits</div><div class="arrow">→</div>
+    <div class="box"><b>Engine</b><br>served: DAP<br>optional: LocalNet, DAP fallback</div><div class="arrow">→</div>
+    <div class="box"><b>Dashboard</b> (static, separate)<br>map, difference, charts,<br>Impact Lens</div>
+  </div>
+  <p>A zero shock gives output bit-identical to no shock. A response header names the model that answered each request. No network or dataset is used at inference.</p>
+
+  <h2>Model design</h2>
+  <p><b>Served: damped anomaly persistence (DAP).</b> For each variable and cell: <code>x(d+k) = clim(d+k) + φ^k · (x(d) − clim(d))</code>. Climatology is the 2005–2017 calendar-day mean with a 15-day circular smoothing; φ is the lag-1 least-squares coefficient on the same years, limited to 0–0.99. Re-fitting reproduces the shipped files byte for byte.</p>
+  <p><b>Candidate, not activated: LocalNet.</b> A 313,735-parameter residual CNN (3×3 stem, 4 blocks, 64 channels, per-cell normalisation, no down-sampling or global layers) predicting one-day changes, rain in log1p space; one-step training, then 2- and 4-step rollout fine-tuning on 2005–2015, choices made on 2016–2017.</p>
+
+  <h2>How drift and blur are limited</h2>
+  <ul>
+    <li><b>Drift:</b> in DAP the anomaly can only shrink, so errors cannot accumulate into runaway values. Both models are clamped to physical limits every step (rain never negative); a non-finite LocalNet step is replaced by a DAP step.</li>
+    <li><b>Blur:</b> DAP relaxes to a daily climatology that keeps geographic structure. Day-8 spatial variance as a share of the real field: t2m 0.97, tp 0.41, u10 0.70, v10 0.68, msl 0.86, tcwv 0.90. Rain is the weakest and sits just above the 0.40 line.</li>
+  </ul>
+
+  <h2>Local validation: 2018–2019 (test years 2020–2021 unused)</h2>
+  <table class="num">
+    <tr><th>46 forecast windows + 6 × 2 shock tests</th><th>DAP (served)</th><th>LocalNet (candidate)</th></tr>
+    <tr><td>Day-4 skill against persistence</td><td>+0.197</td><td>+0.249</td></tr>
+    <tr><td>RMSE-skill points (of 30) · heavy-rain points (of 15)</td><td>16.6 · 0.0</td><td>29.5 · 0.8</td></tr>
+    <tr><td>Anti-blur (of 10) · shock causality (of 15)</td><td>10.0 · 11.25</td><td>9.45 · 13.4</td></tr>
+    <tr><td>Shocks local on day 1 · spreading by days 4–8 · stable</td><td>12/12 · 0/12 · 12/12</td><td>12/12 · 8/12 · 11/12</td></tr>
+  </table>
+  <div class="caveat"><b>Read with care:</b> measured by one team member with the organisers' scoring functions and <b>not independently reproduced by a second person</b>. This replicates 70 of the 100 points locally; it is not the competition score. The judge uses other windows and does not publish how it averages skill; the point values depend on that choice.</div>
+
+  <h2>Failure modes we know about</h2>
+  <ul>
+    <li><b>DAP cannot spread a shock.</b> Cells and variables are independent: a wind or temperature shock cannot change rain or neighbouring cells.</li>
+    <li>DAP's error is slightly <b>worse than the better of persistence and climatology at days 4 and 8</b>; its day-1 edge is small (0.02–0.07). Heavy-rain skill is about zero.</li>
+    <li><b>LocalNet</b> (why it is not yet activated): monsoon-stall spreading passes only 2 of 6 windows; one stability failure; day-8 error worse than DAP on all variables; day-8 rain variance 0.27; unrealistic inputs drive rain into the 1000 mm/day clamp; not run on Linux.</li>
+    <li>Untested: the judge's hardware and Linux sandbox. The contract does not state the day-of-year base; we use 1 for 1 January.</li>
+  </ul>
+</section>
+
+<section class="page">
+  <h1 style="font-size:13pt">Visualization and impact use case</h1>
+  <img src="figure-dashboard.png" alt="Dashboard showing the difference view of a custom rain shock and the Impact Lens cards">
+  <p class="sub"><b>Figure: live output of the running system.</b> Input: 3 real days ending 8 Aug 2019 (ERA5). Shock: a smooth +40 mm/day rain blob centred at 22.5°N 78.5°E (radius 3 cells), added to the last input day. View: scenario − baseline rain, day 1. The cards show model scenarios, not observations.</p>
+
+  <div class="cols">
+    <div>
+      <h2>MonsoonTwin Console</h2>
+      <ul>
+        <li>Four real input cases chosen by fixed rules on the inputs; a synthetic input is clearly labelled.</li>
+        <li>The organisers' two shocks (checked against their code), plus custom rectangle or smooth shocks on any variable, centred by clicking the map.</li>
+        <li>Baseline, scenario and symmetric difference maps; map and legend share one colour function; a coastline from the supplied land–sea mask.</li>
+        <li>Per-cell series against climatology, and <b>shock energy against distance</b> from the shocked area, using the organisers' energy definition.</li>
+        <li>Runs are one snapshot: inputs lock, results appear only if all calls succeed, and stale results are removed. Keyboard operable.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Monsoon Impact Lens: a rain "what-if" desk</h2>
+      <p><b>User:</b> an agriculture or disaster-planning analyst asking "if conditions here changed today, what moves over the next 10 days?"</p>
+      <ul>
+        <li>Core monsoon zone (18–28°N, 65–88°E) rain total, and departure from climatology.</li>
+        <li>Rain over the shocked area; heavy-rain cell-days (≥ 10 mm/day).</li>
+        <li>Warm land cell-days (≥ +3 K above climatology); daily core-zone rain over time.</li>
+      </ul>
+      <p>Each shows baseline, scenario and change, is computed in the browser from the arrays on screen, and carries its method and limitation.</p>
+    </div>
+  </div>
+
+  <h2>Reading the example</h2>
+  <p>In the figure, the 10-day core-zone total rises from 86.7 to 97.0 mm (+10.3) and rain over the shocked cells from 101.8 to 116.9 mm (+15.1). With DAP the added rain simply fades in place, so this shows the persistence of an anomaly, <b>not transport</b>. For the two official shocks, which change no rain, DAP's rain change is exactly zero; the console says this is a limit of the model, not a finding about the atmosphere.</p>
+
+  <h2>Honesty box: what this is not</h2>
+  <ul>
+    <li>1° grid-mean daily values: not station rain, not maximum temperature, <b>not a flood or heatwave warning</b>. The IMD heatwave and monsoon-break criteria are not computed.</li>
+    <li>Deterministic, no uncertainty estimate. Not for operational decisions.</li>
+    <li>Every indicator is a proxy. Nothing pre-rendered is presented as a forecast by the console.</li>
+  </ul>
+  <p class="sub">Data: Contains modified Copernicus Climate Change Service information (ERA5, Hersbach et al. 2020), via WeatherBench 2 (Rasp et al. 2024); ERA5 is licensed under CC BY 4.0. Neither the European Commission nor ECMWF is responsible for any use of this information. Dataset and scoring code: the organisers' yug-monsoon-kit.</p>
+</section>
+</body>
+</html>

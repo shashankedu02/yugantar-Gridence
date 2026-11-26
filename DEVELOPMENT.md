@@ -1,6 +1,6 @@
 # Development quick start
 
-Read `docs/WORKSTREAMS.md` first (who owns what, git rules). Status: the server is contract-compliant but serves a **placeholder persistence forecast**; no model is trained or validated yet.
+Read `docs/WORKSTREAMS.md` first (who owns what, git rules). Status: the server serves the fitted **DAP** model from `weights/`; LocalNet is present but not activated. For install and run instructions, `README.md` is current; this page keeps team-era notes.
 
 ## 1. Get the code (everyone)
 ```powershell
