@@ -6,71 +6,13 @@
 
 import { CHANNELS, GRID } from "./config.js";
 import { drawCoastline, drawIsobars } from "./contour.js";
+import { valueToRgba } from "./ui/colormap.js";
 
-const RAMPS = Object.freeze({
-  thermal: [
-    [22, 34, 82],
-    [43, 92, 143],
-    [66, 152, 155],
-    [168, 198, 108],
-    [237, 162, 69],
-    [214, 72, 54],
-  ],
-  rain: [
-    [15, 23, 42],
-    [35, 92, 114],
-    [46, 160, 158],
-    [82, 204, 152],
-    [176, 230, 118],
-    [248, 240, 130],
-  ],
-  dense: [
-    [17, 25, 48],
-    [39, 64, 112],
-    [64, 115, 158],
-    [118, 168, 189],
-    [194, 219, 224],
-  ],
-  haline: [
-    [19, 29, 64],
-    [34, 86, 122],
-    [45, 146, 132],
-    [122, 198, 116],
-    [232, 235, 138],
-  ],
-  balance: [
-    [44, 105, 180],
-    [120, 168, 214],
-    [148, 163, 184],
-    [236, 156, 104],
-    [198, 62, 54],
-  ],
-});
+const MISSING_RGBA = [20, 26, 38, 255];
 
-function lerpColor(stops, t) {
-  const clamped = Math.max(0, Math.min(1, t));
-  const scaled = clamped * (stops.length - 1);
-  const idx = Math.min(stops.length - 2, Math.floor(scaled));
-  const frac = scaled - idx;
-  const a = stops[idx];
-  const b = stops[idx + 1];
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * frac),
-    Math.round(a[1] + (b[1] - a[1]) * frac),
-    Math.round(a[2] + (b[2] - a[2]) * frac),
-  ];
-}
-
-export function sampleRamp(rampName, value, min, max, isRain = false) {
-  if (!Number.isFinite(value)) return [20, 26, 38, 255];
-  if (isRain && value < 1.0) {
-    return [14, 22, 38, 255];
-  }
-  const span = max - min;
-  const t = span > 0 ? (value - min) / span : 0.5;
-  const stops = RAMPS[rampName] || RAMPS.thermal;
-  const [r, g, b] = lerpColor(stops, t);
-  return [r, g, b, 255];
+/** Colour of one cell. The legend is built from the same module, so the two cannot disagree. */
+export function sampleRamp(rampName, value, min, max) {
+  return valueToRgba(value, { min, max, ramp: rampName }) || MISSING_RGBA;
 }
 
 export function getChannelSpec(channelIndex, meta = null) {
@@ -229,7 +171,6 @@ export function renderMapCanvas(
   }
 
   const range = getFieldRange(channelIndex, view, meta);
-  const isRain = range.channel === "tp" && view !== "difference";
   const offCtx = getOffscreenContext();
 
   if (offCtx) {
@@ -240,7 +181,7 @@ export function renderMapCanvas(
       const rowData = field[r];
       for (let c = 0; c < GRID.cols; c++) {
         const val = Array.isArray(rowData) ? rowData[c] : NaN;
-        const [cr, cg, cb, ca] = sampleRamp(range.ramp, val, range.min, range.max, isRain);
+        const [cr, cg, cb, ca] = sampleRamp(range.ramp, val, range.min, range.max);
         const idx = (canvasRow * GRID.cols + c) * 4;
         img.data[idx] = cr;
         img.data[idx + 1] = cg;
@@ -289,7 +230,7 @@ export function formatHoverReadout({ cell, state }) {
   return parts.join(" · ");
 }
 
-export function bindCanvasInteractions(canvas, { onHover, onClick }) {
+export function bindCanvasInteractions(canvas, { onHover, onClick, getSelected }) {
   if (!canvas) return () => {};
   const handleMove = (e) => onHover?.(canvasPointToCell(canvas, e.clientX, e.clientY));
   const handleLeave = () => onHover?.(null);
@@ -300,7 +241,23 @@ export function bindCanvasInteractions(canvas, { onHover, onClick }) {
   canvas.addEventListener("mousemove", handleMove);
   canvas.addEventListener("mouseleave", handleLeave);
   canvas.addEventListener("click", handleClick);
+  const MOVES = { ArrowUp: [1, 0], ArrowDown: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+  const handleKey = (e) => {
+    const move = MOVES[e.key];
+    if (!move || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    e.stopPropagation(); // arrows belong to the map while it has focus
+    const from = getSelected?.() || { row: Math.floor(GRID.rows / 2), col: Math.floor(GRID.cols / 2) };
+    const cell = {
+      row: Math.max(0, Math.min(GRID.rows - 1, from.row + move[0])),
+      col: Math.max(0, Math.min(GRID.cols - 1, from.col + move[1])),
+    };
+    onClick?.(cell);
+    onHover?.(cell);
+  };
+  canvas.addEventListener("keydown", handleKey);
   return () => {
+    canvas.removeEventListener("keydown", handleKey);
     canvas.removeEventListener("mousemove", handleMove);
     canvas.removeEventListener("mouseleave", handleLeave);
     canvas.removeEventListener("click", handleClick);

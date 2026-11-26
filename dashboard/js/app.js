@@ -21,10 +21,12 @@ import {
 import {
   buildPresetPerturbation,
   buildSimulatePayload,
+  clonePerturbation,
   createZeroPerturbation,
   isZeroPerturbation,
 } from "./scenario.js";
 import { loadCases } from "./cases.js";
+import { energyByDistance } from "./analysis.js";
 import { buildSyntheticCase } from "./state.js";
 import {
   renderMapCanvas,
@@ -132,6 +134,14 @@ function setStatus(state, text) {
   if (els.statusText) els.statusText.textContent = text;
 }
 
+/** Build an element with text content only: no string from the server or a file is ever parsed as HTML. */
+function node(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  return el;
+}
+
 // ---------------------------------------------------------------------------
 // W2 fallback banner rendering (used when ui/banner.js is absent)
 // ---------------------------------------------------------------------------
@@ -144,21 +154,12 @@ function renderFallbackModelBanner(el, model) {
     els.unvalidatedBadge.classList.toggle("hidden", validated);
   }
 
-  const parts = [];
+  el.replaceChildren();
   if (mode === "persistence") {
-    parts.push(
-      `<div class="mt-banner mt-banner-warn"><strong>Placeholder forecast: the last day repeated. Not a model.</strong><span class="mt-mono">model: ${model?.name ?? "unknown"}</span></div>`
-    );
+    el.appendChild(node("div", "mt-banner mt-banner-warn", "Placeholder forecast: the last day repeated. Not a model."));
   }
-  if (!validated) {
-    parts.push(
-      `<div class="mt-banner mt-banner-warn"><span>Model validation status: <strong>Unvalidated</strong> (checkpoint not yet passed).</span><span class="mt-badge mt-badge-unvalidated">Unvalidated</span></div>`
-    );
-  }
-  if (model?.card) {
-    parts.push(`<div class="mt-banner"><span>Model card: ${model.card}</span></div>`);
-  }
-  el.innerHTML = parts.join("");
+  el.appendChild(node("div", validated ? "mt-banner" : "mt-banner mt-banner-warn",
+    `model: ${model?.name ?? "unknown"} · ${validated ? "validated" : "Unvalidated"}`));
 }
 
 function renderModelBannerEl(model) {
@@ -178,7 +179,7 @@ function renderModelBannerEl(model) {
 // ---------------------------------------------------------------------------
 function renderFallbackLegend(el, { channel, unit, min, max, ramp }) {
   if (!el) return;
-  el.innerHTML = `<span class="mt-mono mt-muted" style="font-size:12px;">${channel} · ${unit} · [${min}, ${max}] · ramp:${ramp}</span>`;
+  el.replaceChildren(node("span", "mt-mono mt-muted", `${channel} · ${unit} · [${min}, ${max}] · ramp:${ramp}`));
 }
 
 function renderLegendEl({ channel, unit, min, max, ramp }) {
@@ -208,19 +209,17 @@ function renderFallbackSeries(el, { labels, series, unit }) {
     ).join(", ");
     return `${s.name}: [${vals}]`;
   });
-  el.innerHTML = `<pre class="mt-mono" style="font-size:11px;overflow:auto;max-height:120px;">${rows.join("\n")}\nunit: ${unit}</pre>`;
+  el.replaceChildren(node("pre", "mt-mono mt-fallback-pre", `${rows.join("\n")}\nunit: ${unit}`));
 }
 
-function renderFallbackEnergyByDistance(el, { distances, baseline, scenario }) {
+function renderFallbackEnergyByDistance(el, { distances, scenario }) {
   if (!el) return;
   if (!Array.isArray(distances) || distances.length === 0) {
     el.textContent = "No energy-by-distance data.";
     return;
   }
-  const rows = distances.map((d, i) =>
-    `d=${d.toFixed(0)} km  base=${Number.isFinite(baseline?.[i]) ? baseline[i].toFixed(3) : "—"}  scen=${Number.isFinite(scenario?.[i]) ? scenario[i].toFixed(3) : "—"}`
-  );
-  el.innerHTML = `<pre class="mt-mono" style="font-size:11px;overflow:auto;max-height:80px;">${rows.join("\n")}</pre>`;
+  const rows = distances.map((d, i) => `${d} cells: ${Number.isFinite(scenario?.[i]) ? scenario[i].toFixed(3) : "—"}`);
+  el.replaceChildren(node("pre", "mt-mono mt-fallback-pre", rows.join("\n")));
 }
 
 function renderSeriesChartEl(data) {
@@ -230,11 +229,11 @@ function renderSeriesChartEl(data) {
   renderFallbackSeries(els.seriesChartContainer, data);
 }
 
-function renderEnergyChartEl(data) {
+function renderEnergyChartEl(el, data, options) {
   if (w3Charts?.renderEnergyByDistance) {
-    try { w3Charts.renderEnergyByDistance(els.energyChartContainer, data); return; } catch {}
+    try { w3Charts.renderEnergyByDistance(el, data, options); return; } catch (err) { console.error(err); }
   }
-  renderFallbackEnergyByDistance(els.energyChartContainer, data);
+  renderFallbackEnergyByDistance(el, data);
 }
 
 // ---------------------------------------------------------------------------
@@ -246,12 +245,8 @@ function renderFallbackImpactCards(el, indicators) {
     el.textContent = "No impact indicators.";
     return;
   }
-  const html = indicators.map((ind) => {
-    const badge = ind.isProxy ? ` <span class="mt-badge mt-badge-unvalidated">proxy</span>` : "";
-    const statusColor = ind.status === "elevated" ? "var(--mt-amber)" : ind.status === "critical" ? "var(--mt-danger)" : "var(--mt-teal)";
-    return `<div style="margin-bottom:6px;"><strong style="color:${statusColor}">${ind.label}:</strong> ${Number.isFinite(Number(ind.value)) ? Number(ind.value).toFixed(2) : ind.value} ${ind.unit}${badge}${ind.note ? ` <span class="mt-muted">(${ind.note})</span>` : ""}</div>`;
-  }).join("");
-  el.innerHTML = html;
+  el.replaceChildren(...indicators.map((ind) => node("div", "",
+    `${ind.label}: ${ind.value} ${ind.unit ?? ""}${ind.isProxy ? " (proxy)" : ""}${ind.note ? ` — ${ind.note}` : ""}`)));
 }
 
 function renderImpactCardsEl(indicators) {
@@ -314,7 +309,9 @@ function buildVariableSelector() {
     btn.className = "mt-btn mt-tab";
     btn.type = "button";
     btn.dataset.channelIndex = String(i);
-    btn.textContent = ch.label;
+    btn.textContent = `${i + 1} ${ch.shortLabel}`;
+    btn.title = `${ch.label} (${ch.unit})`;
+    btn.setAttribute("aria-label", `${ch.label}, ${ch.unit}`);
     btn.setAttribute("aria-pressed", i === 0 ? "true" : "false");
     btn.addEventListener("click", () => {
       store.setChannelIndex(i);
@@ -499,61 +496,38 @@ function renderCellSeries(state) {
 
   const series = [{ name: "Baseline", values: baseVals }];
   if (state.scenario?.rollout) series.push({ name: "Scenario", values: scenVals });
-  renderSeriesChartEl({ labels, series, unit: spec.unit });
+  if (state.climatology) {
+    series.push({ name: "Climatology", values: labels.map((_, d) => state.climatology[d]?.[ch]?.[row]?.[col] ?? null) });
+  }
+  const lat = state.meta?.grid?.lat?.[row];
+  const lon = state.meta?.grid?.lon?.[col];
+  renderSeriesChartEl({ labels, series, unit: `${spec.id} ${spec.unit} at ${lat}°N ${lon}°E` });
 }
 
 // ---------------------------------------------------------------------------
-// Shock energy by distance (naive radial aggregation)
+// Shock response energy against distance from the shocked area
 // ---------------------------------------------------------------------------
 function renderEnergyChart(state) {
-  if (!state.difference || !state.shock?.perturbation) {
-    if (els.energyChartContainer) els.energyChartContainer.textContent = "Run baseline + scenario to inspect shock spread.";
+  const el = els.energyChartContainer;
+  if (!el) return;
+  if (!state.difference) {
+    el.textContent = "Run a baseline and a shock scenario to see how far the response reaches.";
     return;
   }
-
-  const pert = state.shock.perturbation;
-  // Find shock centroid in grid coords
-  let sumR = 0; let sumC = 0; let n = 0;
-  for (let r = 0; r < GRID.rows; r++) {
-    for (let c = 0; c < GRID.cols; c++) {
-      for (let ch = 0; ch < 6; ch++) {
-        if (pert[ch]?.[r]?.[c] !== 0) { sumR += r; sumC += c; n++; break; }
-      }
-    }
+  // The delta that produced THIS result, not whatever is selected now.
+  const result = energyByDistance(state.difference[state.dayIndex], state.runInfo?.perturbation, state.meta?.channel_std);
+  if (!result) {
+    el.textContent = "Energy by distance needs the channel standard deviations from the server (not available).";
+    return;
   }
-  if (n === 0) return;
-  const centR = sumR / n;
-  const centC = sumC / n;
-
-  const maxDist = 20; // cells
-  const distances = [];
-  const baseline = [];
-  const scenario = [];
-
-  for (let d = 0; d <= maxDist; d++) {
-    distances.push(d * 111); // ~111 km per degree
-    let bEnergy = 0; let sEnergy = 0; let cnt = 0;
-    for (let r = 0; r < GRID.rows; r++) {
-      for (let c = 0; c < GRID.cols; c++) {
-        const dist = Math.sqrt((r - centR) ** 2 + (c - centC) ** 2);
-        if (Math.abs(dist - d) > 0.5) continue;
-        const diff = state.difference?.[state.dayIndex];
-        if (!diff) continue;
-        let bEn = 0; let sEn = 0;
-        for (let ch = 0; ch < 6; ch++) {
-          const dv = diff?.[ch]?.[r]?.[c] ?? 0;
-          sEn += dv * dv;
-        }
-        bEnergy += 0;
-        sEnergy += sEn;
-        cnt++;
-      }
-    }
-    baseline.push(cnt > 0 ? bEnergy / cnt : 0);
-    scenario.push(cnt > 0 ? sEnergy / cnt : 0);
-  }
-
-  renderEnergyChartEl({ distances, baseline, scenario });
+  const chart = node("div");
+  const share = result.outsideShare === null ? "no response on this day"
+    : `${(100 * result.outsideShare).toFixed(1)}% of the response energy is outside the shocked area`;
+  const caption = node("div", "mt-mono mt-muted mt-caption",
+    `Day ${state.dayIndex + 1}: mean of Σ(Δ/σ)² per cell, by distance in grid cells (0 = shocked area). ${share}.`);
+  el.replaceChildren(chart, caption);
+  renderEnergyChartEl(chart, { distances: result.labels, baseline: [], scenario: result.meanEnergy },
+    { unit: "Σ(Δ/σ)² per cell", scenarioLabel: "Scenario − baseline" });
 }
 
 // ---------------------------------------------------------------------------
@@ -625,14 +599,13 @@ function renderRunLog(state) {
     els.runLog.textContent = "No runs yet.";
     return;
   }
-  els.runLog.innerHTML = state.runLog
-    .map(
-      (entry) =>
-        `<div>${entry.time} · <strong>${entry.type}</strong> · ${entry.steps} steps · ${entry.inferenceMs ?? "?"}ms` +
-        (entry.error ? ` · <span style="color:var(--mt-danger)">${entry.error}</span>` : "") +
-        `</div>`
-    )
-    .join("");
+  els.runLog.replaceChildren(...state.runLog.map((entry) => {
+    const ms = Number.isFinite(entry.inferenceMs) ? `${entry.inferenceMs.toFixed(0)} ms` : "no timing";
+    const line = node("div", "", [entry.time, entry.type, `${entry.steps} days`, entry.error ? null : ms,
+      entry.preset, entry.model].filter(Boolean).join(" · "));
+    if (entry.error) line.appendChild(node("span", "mt-error-text", ` · ${entry.error}`));
+    return line;
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -756,6 +729,7 @@ async function runSimulation() {
   const hasShock = !isZeroPerturbation(live.shock.perturbation);
   const presetId = live.shock.presetId;
   const shockLabel = hasShock ? live.shock.label || SHOCK_PRESETS[presetId]?.label || presetId : null;
+  const perturbation = hasShock ? clonePerturbation(live.shock.perturbation) : null;
 
   let baselinePayload;
   let scenarioPayload = null;
@@ -803,6 +777,7 @@ async function runSimulation() {
       baseline: baseline.served,
       scenario: scenario ? scenario.served : null,
       comparable,
+      perturbation,
     };
     store.completeRun({ baseline, scenario, climatology, climatologyNote, info });
 
@@ -852,6 +827,41 @@ function formatApiError(prefix, err) {
 }
 
 // ---------------------------------------------------------------------------
+// Keyboard shortcuts. Never with Ctrl/Cmd/Alt (browser shortcuts), never while typing or using a form control.
+// ---------------------------------------------------------------------------
+function handleShortcut(e) {
+  if (e.key === "Escape") {
+    document.querySelectorAll("details[open]").forEach((d) => { d.open = false; });
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+  const target = e.target;
+  if (target instanceof Element) {
+    if (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+    // Space and Enter keep their normal meaning on buttons, links and disclosure controls.
+    if ((e.key === " " || e.key === "Enter") && ["BUTTON", "A", "SUMMARY"].includes(target.tagName)) return;
+  }
+  const state = store.getState();
+  const key = e.key.toLowerCase();
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    if (!state.baseline) return;
+    e.preventDefault();
+    store.setDayIndex(state.dayIndex + (e.key === "ArrowRight" ? 1 : -1));
+  } else if (e.key === " ") {
+    if (els.playBtn && !els.playBtn.disabled) {
+      e.preventDefault();
+      els.playBtn.click();
+    }
+  } else if (/^[1-6]$/.test(e.key)) {
+    store.setChannelIndex(Number(e.key) - 1);
+  } else if (key === "b" || key === "s" || key === "d") {
+    const view = { b: "baseline", s: "scenario", d: "difference" }[key];
+    const tab = document.querySelector(`.mt-tab[data-view="${view}"]`);
+    if (tab && !tab.disabled) tab.click();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
 async function init() {
@@ -877,8 +887,11 @@ async function init() {
     store
   );
 
-  // Canvas hover / click
+  document.addEventListener("keydown", handleShortcut);
+
+  // Canvas hover / click / keyboard
   bindCanvasInteractions(els.mapCanvas, {
+    getSelected: () => store.getState().selectedCell,
     onHover: (cell) => {
       _hoverCell = cell;
       if (els.hoverReadout) {

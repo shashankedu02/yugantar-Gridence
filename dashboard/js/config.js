@@ -22,12 +22,12 @@ export const MAX_STEPS = 30;
 export const DEFAULT_STEPS = 10;
 
 export const CHANNELS = Object.freeze([
-  { id: "t2m", label: "2m Temperature", unit: "K", displayUnit: "K", min: 270, max: 315, diffMax: 5, ramp: "thermal" },
-  { id: "tp", label: "Precipitation", unit: "mm/day", displayUnit: "mm/day", min: 0, max: 65, diffMax: 20, ramp: "rain" },
-  { id: "u10", label: "10m U-Wind", unit: "m/s", displayUnit: "m/s", min: -20, max: 20, diffMax: 8, ramp: "balance" },
-  { id: "v10", label: "10m V-Wind", unit: "m/s", displayUnit: "m/s", min: -20, max: 20, diffMax: 8, ramp: "balance" },
-  { id: "msl", label: "Mean Sea-Level Pressure", unit: "Pa", displayUnit: "Pa", min: 99500, max: 102500, diffMax: 800, ramp: "dense" },
-  { id: "tcwv", label: "Column Water Vapour", unit: "kg/m2", displayUnit: "kg/m2", min: 5, max: 75, diffMax: 15, ramp: "haline" },
+  { id: "t2m", shortLabel: "Temp", label: "2m Temperature", unit: "K", displayUnit: "K", min: 270, max: 315, diffMax: 5, ramp: "thermal" },
+  { id: "tp", shortLabel: "Rain", label: "Precipitation", unit: "mm/day", displayUnit: "mm/day", min: 0, max: 65, diffMax: 20, ramp: "rain" },
+  { id: "u10", shortLabel: "U-wind", label: "10m U-Wind", unit: "m/s", displayUnit: "m/s", min: -20, max: 20, diffMax: 8, ramp: "balance" },
+  { id: "v10", shortLabel: "V-wind", label: "10m V-Wind", unit: "m/s", displayUnit: "m/s", min: -20, max: 20, diffMax: 8, ramp: "balance" },
+  { id: "msl", shortLabel: "Pressure", label: "Mean Sea-Level Pressure", unit: "Pa", displayUnit: "Pa", min: 99500, max: 102500, diffMax: 800, ramp: "dense" },
+  { id: "tcwv", shortLabel: "Moisture", label: "Column Water Vapour", unit: "kg/m2", displayUnit: "kg/m2", min: 5, max: 75, diffMax: 15, ramp: "haline" },
 ]);
 
 /**

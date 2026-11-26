@@ -5,6 +5,8 @@
  */
 
 export const RAIN_BINS = [1, 2.5, 5, 10, 20, 35, 65, 115];
+// Dry (< 1 mm/day) is a real value: it is drawn opaque, so it can never be mistaken for the "missing" background.
+export const DRY_RGB = [34, 41, 56];
 
 export const PALETTE_STOPS = {
   thermal: [
@@ -171,7 +173,7 @@ export function valueToRgba(value, spec) {
   // Rainfall (< 1 mm/day white/transparent treatment, discrete log-like bins)
   if (ramp === "rain" || spec?.belowOneTransparent) {
     if (v < 1) {
-      return [255, 255, 255, 22];
+      return [...DRY_RGB, 255];
     }
     const bins = Array.isArray(spec?.bins) && spec.bins.length >= 2 ? spec.bins : RAIN_BINS;
     let binIdx = bins.length - 1;
@@ -211,7 +213,8 @@ export function buildLegendCss(spec) {
   const ramp = spec?.ramp;
   const stops = resolveRampStops(ramp);
   if (ramp === "rain") {
-    const parts = ["rgba(255, 255, 255, 0.12) 0%", "rgba(255, 255, 255, 0.12) 11%"];
+    const dry = `rgb(${DRY_RGB.join(", ")})`;
+    const parts = [`${dry} 0%`, `${dry} 11%`];
     const n = stops.length;
     stops.forEach((s, i) => {
       const p0 = (11 + (i / n) * 89).toFixed(1);

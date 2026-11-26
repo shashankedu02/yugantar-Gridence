@@ -44,8 +44,15 @@ export function renderLegend(el, data, options = {}) {
 
   let min = toFiniteNumber(data.min);
   let max = toFiniteNumber(data.max);
-  if (min === null) min = 0;
-  if (max === null) max = 1;
+  // Rain uses fixed bins. Any other scale without a real range is reported as unavailable, never assumed.
+  if ((min === null || max === null) && ramp !== "rain") {
+    const empty = document.createElement("div");
+    empty.className = "mt-legend-head";
+    empty.textContent = `${channel}: colour scale unavailable`;
+    root.appendChild(empty);
+    el.appendChild(root);
+    return;
+  }
 
   const isSymmetric = Boolean(options?.symmetric || ramp === "balance" || ramp === "diff");
   if (isSymmetric) {

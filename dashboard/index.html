@@ -4,8 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MonsoonTwin Console</title>
+  <link rel="icon" href="data:," />
   <!-- W3-owned stylesheets (loaded if present; fallback styles below keep core UI usable offline) -->
   <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/components.css" />
   <style id="w2-fallback-styles">
@@ -131,6 +133,38 @@
     .mt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .mt-muted { color: var(--mt-muted); }
     .hidden { display: none !important; }
+    /* Compact shell: map, legend and timeline fit a 1366x768 screen. These rules load after the shared styles. */
+    .mt-topbar { position: static; min-height: 0; padding: 6px 16px; }
+    .mt-topbar .mt-select, .mt-topbar .mt-input { width: auto; }
+    #case-select { max-width: 340px; }
+    #api-base-input { width: 200px; }
+    .mt-banners { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 6px; }
+    .mt-banners .mt-banner, .mt-banners .mt-banner-strip { padding-top: 3px; padding-bottom: 3px; }
+    .mt-layout { padding-top: 8px; padding-bottom: 8px; align-items: start; }
+    .mt-layout .mt-panel { padding: 8px 12px; }
+    .mt-stage { gap: 0; }
+    .mt-stage-header { margin-bottom: 4px; }
+    .mt-stage-header .mt-btn { padding: 3px 8px; font-size: 12px; }
+    #result-provenance { font-size: 11px; }
+    .mt-canvas-wrap { min-height: 0; }
+    #map-canvas {
+      height: clamp(240px, calc(100vh - 372px), 560px);
+      width: auto;
+      max-width: 100%;
+      aspect-ratio: 36 / 32;
+      object-fit: contain;
+    }
+    #map-canvas:focus-visible { outline: 2px solid #2ec4b6; outline-offset: -2px; }
+    #map-hover-readout { font-size: 11px; margin-top: 4px !important; }
+    #legend-container { margin-top: 4px !important; }
+    #legend-container .mt-legend { gap: 2px; padding: 4px 10px; }
+    #legend-container .mt-legend-bar { height: 9px; }
+    .mt-stage > div:last-child { margin-top: 6px !important; }
+    .mt-caption { font-size: 11px; }
+    .mt-fallback-pre { font-size: 11px; overflow: auto; max-height: 120px; }
+    .mt-error-text { color: var(--mt-danger, #ef5350); }
+    #run-log { max-height: 120px; overflow: auto; font-size: 11px; }
+    @media (max-width: 780px) { #map-canvas { height: auto; width: 100%; } }
     @media (max-width: 1180px) {
       .mt-layout { grid-template-columns: 240px minmax(0, 1fr); }
       .mt-right-rail { grid-column: 1 / -1; }
@@ -176,6 +210,7 @@
   <main class="mt-layout">
     <aside class="mt-panel mt-left-rail" aria-label="Scenario builder">
       <h2>Scenario &amp; Run</h2>
+      <p class="mt-muted mt-caption">Keys: ← → day · Space play · 1–6 variable · B S D view · on the map, arrows move the cell.</p>
       <div id="scenario-controls">
         <p class="mt-muted">Scenario controls will initialize in Stage 2B.</p>
       </div>
@@ -199,10 +234,10 @@
       <div id="result-provenance" class="mt-mono mt-muted" role="status" style="margin-bottom: 6px;">No forecast on screen.</div>
 
       <div class="mt-canvas-wrap">
-        <canvas id="map-canvas" width="576" height="512" aria-label="India 1-degree weather grid"></canvas>
+        <canvas id="map-canvas" width="576" height="512" tabindex="0" role="application" aria-label="India 1-degree weather grid. Arrow keys move the selected cell." aria-describedby="map-hover-readout"></canvas>
       </div>
 
-      <div id="map-hover-readout" class="mt-mono mt-muted" style="margin-top: 8px;">Hover or click a grid cell after running a simulation.</div>
+      <div id="map-hover-readout" aria-live="polite" class="mt-mono mt-muted" style="margin-top: 8px;">Hover or click a grid cell after running a simulation.</div>
       <div id="legend-container" style="margin-top: 8px;"></div>
 
       <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">

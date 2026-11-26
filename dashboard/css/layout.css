@@ -123,9 +123,6 @@
     --mt-map-max-h: clamp(220px, 38vh, 360px);
   }
 
-  .mt-chart-svg {
-    max-height: 110px;
-  }
 }
 
 /* Tablet & Small Laptop (< 1200px, e.g. 1024x768): Collapse rails into drawers */

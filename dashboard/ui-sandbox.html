@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MonsoonTwin — UI Observatory Sandbox (Synthetic Mock Data)</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./css/tokens.css">
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/layout.css">
@@ -484,27 +485,40 @@
     const btnOpenLeft = document.getElementById("btn-open-left");
     const btnOpenRight = document.getElementById("btn-open-right");
 
+    const drawerMode = window.matchMedia("(max-width: 1199px)");
+    let drawerOpener = null;
+
+    function syncDrawerInert() {
+      for (const rail of [railLeft, railRight]) rail.inert = drawerMode.matches && !rail.classList.contains("is-open");
+    }
+
     function closeDrawers() {
+      const wasOpen = railLeft.classList.contains("is-open") || railRight.classList.contains("is-open");
       railLeft.classList.remove("is-open");
       railRight.classList.remove("is-open");
       backdrop.classList.remove("is-visible");
       btnOpenLeft.setAttribute("aria-expanded", "false");
       btnOpenRight.setAttribute("aria-expanded", "false");
+      syncDrawerInert();
+      if (wasOpen && drawerOpener) drawerOpener.focus();
+      drawerOpener = null;
     }
 
-    btnOpenLeft.addEventListener("click", () => {
+    function openDrawer(rail, opener) {
       closeDrawers();
-      railLeft.classList.add("is-open");
+      drawerOpener = opener;
+      rail.classList.add("is-open");
       backdrop.classList.add("is-visible");
-      btnOpenLeft.setAttribute("aria-expanded", "true");
-    });
+      opener.setAttribute("aria-expanded", "true");
+      syncDrawerInert();
+      // The rail slides in; focus it once it can receive focus.
+      requestAnimationFrame(() => rail.querySelector("[data-close-drawer]")?.focus({ preventScroll: true }));
+    }
 
-    btnOpenRight.addEventListener("click", () => {
-      closeDrawers();
-      railRight.classList.add("is-open");
-      backdrop.classList.add("is-visible");
-      btnOpenRight.setAttribute("aria-expanded", "true");
-    });
+    btnOpenLeft.addEventListener("click", () => openDrawer(railLeft, btnOpenLeft));
+    btnOpenRight.addEventListener("click", () => openDrawer(railRight, btnOpenRight));
+    drawerMode.addEventListener("change", closeDrawers);
+    syncDrawerInert();
 
     backdrop.addEventListener("click", closeDrawers);
     document.querySelectorAll("[data-close-drawer]").forEach((btn) => btn.addEventListener("click", closeDrawers));

@@ -67,7 +67,7 @@ export async function startWeb(port) {
 }
 
 /** Forwards to a real server but reports another model for shocked forecasts, to test the comparability guard. */
-export function startMislabellingProxy(port, target) {
+export function startMislabellingProxy(port, target, extraHeaders = { "x-monsoontwin-fallback": "whole-request-fallback" }) {
   const server = createServer((req, res) => {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));
@@ -77,7 +77,7 @@ export function startMislabellingProxy(port, target) {
       try { shocked = JSON.parse(body.toString()).perturbation != null; } catch {}
       const up = httpRequest({ host: "127.0.0.1", port: target, path: req.url, method: req.method, headers: req.headers }, (r) => {
         const headers = { ...r.headers };
-        if (shocked) headers["x-monsoontwin-fallback"] = "whole-request-fallback";
+        if (shocked) Object.assign(headers, extraHeaders);
         res.writeHead(r.statusCode, headers);
         r.pipe(res);
       });

@@ -70,8 +70,13 @@ export function renderEnergyByDistance(el, data, options = {}) {
     x: padL - 6, y: padT + plotH, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace"
   }, "0"));
 
-  svg.appendChild(svgEl("text", { x: padL + 4, y: 14, fill: "#2EC4B6", "font-size": 11, "font-family": "monospace" }, "Baseline"));
-  svg.appendChild(svgEl("text", { x: padL + 72, y: 14, fill: "#F4A261", "font-size": 11, "font-family": "monospace" }, "Scenario Δ"));
+  // A series is named in the legend only if it has data.
+  const hasBaseline = baseline.some((v) => toFiniteNumber(v) !== null);
+  if (hasBaseline) {
+    svg.appendChild(svgEl("text", { x: padL + 4, y: 14, fill: "#2EC4B6", "font-size": 11, "font-family": "monospace" }, "Baseline"));
+  }
+  svg.appendChild(svgEl("text", { x: padL + (hasBaseline ? 72 : 4), y: 14, fill: "#F4A261", "font-size": 11, "font-family": "monospace" },
+    options?.scenarioLabel || "Scenario Δ"));
   if (options?.unit) {
     svg.appendChild(svgEl("text", { x: W - padR, y: 14, "text-anchor": "end", fill: "#8A99B3", "font-size": 10, "font-family": "monospace" }, options.unit));
   }
@@ -101,7 +106,7 @@ export function renderEnergyByDistance(el, data, options = {}) {
     if (sVal !== null && sVal >= 0) {
       const h = sVal === 0 ? 1.5 : Math.max(2, (sVal / maxVal) * plotH);
       svg.appendChild(svgEl("rect", {
-        x: (cx + 1).toFixed(1),
+        x: (hasBaseline ? cx + 1 : cx - barW / 2).toFixed(1),
         y: (padT + plotH - h).toFixed(1),
         width: barW.toFixed(1),
         height: h.toFixed(1),
