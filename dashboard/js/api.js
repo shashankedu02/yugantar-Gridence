@@ -4,6 +4,10 @@
  */
 
 import { REQUEST_TIMEOUT_MS, getApiBaseUrl, setApiBaseUrl } from "./config.js";
+import { checkClimatologyResponse, checkHealthResponse, checkMetaResponse, checkSimulateResponse } from "./validate.js";
+
+export const MODEL_HEADER = "X-MonsoonTwin-Model";
+export const FALLBACK_HEADER = "X-MonsoonTwin-Fallback";
 
 export class ApiError extends Error {
   constructor({ message, status = 0, kind = "network", endpoint = "", detail = null }) {
@@ -129,10 +133,11 @@ export class MonsoonApiClient {
     }
 
     let response;
+    let rawText;
     try {
       response = await this._fetch(url, init);
+      rawText = await response.text();
     } catch (err) {
-      clearTimeout(timer);
       if (timedOut || err?.name === "AbortError") {
         throw new ApiError({
           message: `Request to ${endpoint} timed out after ${Math.round(timeoutMs / 1000)} s.`,
@@ -148,10 +153,10 @@ export class MonsoonApiClient {
         endpoint,
         detail: err?.message || String(err),
       });
+    } finally {
+      clearTimeout(timer);
     }
-    clearTimeout(timer);
 
-    const rawText = await response.text();
     let parsed = null;
     if (rawText) {
       try {
@@ -181,7 +186,28 @@ export class MonsoonApiClient {
         endpoint,
       });
     }
+    if (endpoint === "/simulate") {
+      // Which model answered THIS request (null if the server does not say).
+      parsed.servedBy = {
+        model: response.headers?.get?.(MODEL_HEADER) ?? null,
+        fallback: response.headers?.get?.(FALLBACK_HEADER) ?? null,
+      };
+    }
     return parsed;
+  }
+
+  async _checked(promise, endpoint, check) {
+    const value = await promise;
+    const problem = check(value);
+    if (problem) {
+      throw new ApiError({
+        message: `Unusable response from ${endpoint}: ${problem}`,
+        status: 200,
+        kind: "bad_response",
+        endpoint,
+      });
+    }
+    return value;
   }
 
   post(endpoint, body, { timeoutMs = this._timeoutMs } = {}) {
@@ -189,19 +215,20 @@ export class MonsoonApiClient {
   }
 
   health() {
-    return this.post("/health");
+    return this._checked(this.post("/health"), "/health", checkHealthResponse);
   }
 
   meta() {
-    return this.post("/meta");
+    return this._checked(this.post("/meta"), "/meta", checkMetaResponse);
   }
 
   simulate(payload) {
-    return this.post("/simulate", payload);
+    return this._checked(this.post("/simulate", payload), "/simulate", (r) => checkSimulateResponse(r, payload.steps));
   }
 
-  climatology(payload) {
-    return this.post("/climatology", payload);
+  climatology({ doy_sincos, steps }) {
+    return this._checked(this.post("/climatology", { doy_sincos, steps }), "/climatology",
+      (r) => checkClimatologyResponse(r, steps));
   }
 }
 

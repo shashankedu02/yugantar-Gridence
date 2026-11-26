@@ -24,6 +24,8 @@ import {
   createZeroPerturbation,
   isZeroPerturbation,
 } from "./scenario.js";
+import { loadCases } from "./cases.js";
+import { buildSyntheticCase } from "./state.js";
 import {
   renderMapCanvas,
   bindCanvasInteractions,
@@ -45,6 +47,7 @@ let w3Banner = null;
 let w3Legend = null;
 let w3Charts = null;
 let w3Impact = null;
+let w3Status = null;
 
 async function loadW3Modules() {
   await Promise.allSettled([
@@ -52,6 +55,7 @@ async function loadW3Modules() {
     import("./ui/legend.js").then((m) => { w3Legend = m; }).catch(() => {}),
     import("./ui/charts.js").then((m) => { w3Charts = m; }).catch(() => {}),
     import("./ui/impact.js").then((m) => { w3Impact = m; }).catch(() => {}),
+    import("./ui/status.js").then((m) => { w3Status = m; }).catch(() => {}),
   ]);
 }
 
@@ -86,7 +90,27 @@ const els = {
   seriesChartContainer: document.getElementById("series-chart-container"),
   energyChartContainer: document.getElementById("energy-chart-container"),
   runLog: document.getElementById("run-log"),
+  runStatus: document.getElementById("run-status"),
+  provenance: document.getElementById("result-provenance"),
+  notice: document.getElementById("notice-text"),
 };
+
+/** Progress and outcome of the current run (W3 status component, plain text if it is unavailable). */
+function showRunStatus(state, message) {
+  if (!els.runStatus) return;
+  if (!message) {
+    els.runStatus.textContent = "";
+    return;
+  }
+  if (w3Status?.renderStatus) w3Status.renderStatus(els.runStatus, { state, message });
+  else els.runStatus.textContent = message;
+}
+
+function showNotice(msg) {
+  if (!els.notice) return;
+  els.notice.textContent = msg || "";
+  els.notice.parentElement?.classList.toggle("hidden", !msg);
+}
 
 // ---------------------------------------------------------------------------
 // Error / status helpers
@@ -355,7 +379,6 @@ function buildScenarioControls() {
   noneBtn.setAttribute("aria-pressed", "true");
   noneBtn.addEventListener("click", () => {
     store.setShock("none", null);
-    store.clearScenarioResult();
   });
   presetsRow.appendChild(noneBtn);
 
@@ -372,7 +395,6 @@ function buildScenarioControls() {
       try {
         const pert = buildPresetPerturbation(preset.id, st.activeCase.init_states, st.meta?.grid || null);
         store.setShock(preset.id, pert);
-        store.clearScenarioResult();
       } catch (err) {
         showError(`Preset error: ${err.message}`);
       }
@@ -622,17 +644,46 @@ function syncSyntheticBadge(state) {
 }
 
 // ---------------------------------------------------------------------------
+// Provenance of what is on screen
+// ---------------------------------------------------------------------------
+function describeServed(served) {
+  if (!served?.model) return "model not reported by the server";
+  return served.fallback ? `${served.model} (FALLBACK: ${served.fallback})` : served.model;
+}
+
+function renderProvenance(state) {
+  if (!els.provenance) return;
+  const info = state.runInfo;
+  if (!info) {
+    els.provenance.textContent = state.running ? "Running: no forecast on screen yet." : "No forecast on screen.";
+    return;
+  }
+  const parts = [
+    `Forecast on screen: ${describeServed(info.baseline)}`,
+    `input: ${info.caseLabel}`,
+    `${info.steps} days`,
+    info.scenario ? `scenario: ${info.shockLabel}` : "baseline only",
+  ];
+  els.provenance.textContent = parts.join(" · ");
+}
+
+// ---------------------------------------------------------------------------
 // Run buttons
 // ---------------------------------------------------------------------------
+let _connecting = false;
+
 function syncRunButtons(state) {
   const hasShock = !isZeroPerturbation(state.shock?.perturbation);
+  const busy = state.running || _connecting;
   if (els.runBtn) {
-    els.runBtn.disabled = false;
-    els.runBtn.textContent = hasShock ? "Run Baseline + Scenario" : "Run Simulation";
+    els.runBtn.disabled = busy;
+    els.runBtn.textContent = state.running ? "Running…" : hasShock ? "Run Baseline + Scenario" : "Run Simulation";
+    els.runBtn.setAttribute("aria-busy", state.running ? "true" : "false");
   }
-  if (els.clearShockBtn) {
-    els.clearShockBtn.disabled = !hasShock;
-  }
+  if (els.clearShockBtn) els.clearShockBtn.disabled = busy || !hasShock;
+  // Inputs of a run cannot change while it is in flight.
+  for (const el of [els.caseSelect, els.apiInput, els.apiApplyBtn]) if (el) el.disabled = busy;
+  els.scenarioControls?.querySelectorAll("button, input, select").forEach((el) => { el.disabled = busy; });
 }
 
 // ---------------------------------------------------------------------------
@@ -650,6 +701,7 @@ function onStoreChange(state) {
   renderEnergyChart(state);
   renderImpact(state);
   renderRunLog(state);
+  renderProvenance(state);
   if (els.hoverReadout) {
     els.hoverReadout.textContent = formatHoverReadout({ cell: _hoverCell, state });
   }
@@ -659,142 +711,135 @@ function onStoreChange(state) {
 // API: connect and load meta
 // ---------------------------------------------------------------------------
 async function connectAndLoadMeta() {
+  if (_connecting || store.getState().running) return false;
+  _connecting = true;
   clearError();
+  showNotice("");
+  showRunStatus(null, "");
   store.setError(null);
+  store.resetConnection(); // nothing from an earlier server stays on screen
+  renderModelBannerEl(null);
+  if (els.metaSummary) els.metaSummary.textContent = "Connecting to server...";
   setStatus("loading", "Connecting…");
-
-  let health;
   try {
-    health = await api.health();
-    store.setHealth(health);
-    setStatus("ready", `Ready (${health.model_name})`);
-  } catch (err) {
-    setStatus("error", err.kind === "timeout" ? "Timeout (15 s)" : "Offline");
-    showError(err.message);
-    return;
-  }
-
-  try {
+    const health = await api.health();
     const meta = await api.meta();
+    store.setHealth(health);
     store.setMeta(meta);
     renderModelBannerEl(meta.model);
-    renderMetaSummary(meta);
+    setStatus("ready", `Ready (${health.model_name})`);
+    return true;
   } catch (err) {
-    showError(`/meta failed: ${err.message}`);
-  }
-
-  // Attempt climatology (503 is expected; handled gracefully)
-  try {
-    const state = store.getState();
-    const payload = {
-      init_states: state.activeCase?.init_states,
-      doy_sincos: state.activeCase?.doy_sincos,
-    };
-    const clim = await api.climatology(payload);
-    store.setClimatology(clim);
-  } catch (err) {
-    if (err.status === 503) {
-      if (els.metaSummary) {
-        const extra = document.createElement("div");
-        extra.className = "mt-muted";
-        extra.style.marginTop = "6px";
-        extra.textContent = "Climatology unavailable (503): anomaly views disabled.";
-        if (els.metaSummary.parentNode) els.metaSummary.parentNode.appendChild(extra);
-      }
-    } else {
-      showError(`/climatology: ${err.message}`);
-    }
+    setStatus("error", err.kind === "timeout" ? "Timeout (15 s)" : "Offline");
+    if (els.metaSummary) els.metaSummary.textContent = "Not connected: model unknown.";
+    showError(err.message);
+    return false;
+  } finally {
+    _connecting = false;
+    syncRunButtons(store.getState());
   }
 }
 
 // ---------------------------------------------------------------------------
-// Run simulation
+// Run simulation: one snapshot of the inputs, all results or none
 // ---------------------------------------------------------------------------
 async function runSimulation() {
+  if (store.getState().running || _connecting) return;
+  if (!store.getState().meta && !(await connectAndLoadMeta())) return; // reconnect after a failure
   clearError();
-  const state = store.getState();
-  const hasShock = !isZeroPerturbation(state.shock?.perturbation);
-  const t0 = Date.now();
+  showNotice("");
 
-  if (els.runBtn) els.runBtn.disabled = true;
+  // Snapshot everything at the click. The live state is not read again for this run.
+  const live = store.getState();
+  const activeCase = live.activeCase;
+  const steps = live.steps;
+  const hasShock = !isZeroPerturbation(live.shock.perturbation);
+  const presetId = live.shock.presetId;
+  const shockLabel = hasShock ? live.shock.label || SHOCK_PRESETS[presetId]?.label || presetId : null;
 
-  // Baseline
   let baselinePayload;
+  let scenarioPayload = null;
   try {
-    baselinePayload = buildSimulatePayload({
-      activeCase: state.activeCase,
-      steps: state.steps,
-      perturbation: null,
-    });
+    baselinePayload = buildSimulatePayload({ activeCase, steps, perturbation: null });
+    if (hasShock) scenarioPayload = buildSimulatePayload({ activeCase, steps, perturbation: live.shock.perturbation });
   } catch (err) {
     showError(`Payload error: ${err.message}`);
-    if (els.runBtn) els.runBtn.disabled = false;
     return;
   }
 
-  let baselineResult;
+  if (!store.beginRun()) return;
+  const logEntry = (type, extra) => ({ time: new Date().toLocaleTimeString(), type, steps, ...extra });
+  const toResult = (res) => ({ rollout: res.rollout, inferenceMs: res.inference_ms ?? null, served: res.servedBy });
+  let stage = "Baseline";
   try {
-    const res = await api.simulate(baselinePayload);
-    baselineResult = { rollout: res.rollout, inferenceMs: res.inference_ms ?? null };
-    store.setBaselineResult(baselineResult);
-    store.appendRunLog({
-      time: new Date().toLocaleTimeString(),
-      type: "baseline",
-      steps: state.steps,
-      inferenceMs: baselineResult.inferenceMs,
-    });
+    showRunStatus("loading", "Running baseline forecast…");
+    const baseline = toResult(await api.simulate(baselinePayload));
+
+    let scenario = null;
+    if (scenarioPayload) {
+      stage = "Scenario";
+      showRunStatus("loading", "Running scenario forecast…");
+      scenario = toResult(await api.simulate(scenarioPayload));
+    }
+
+    let climatology = null;
+    let climatologyNote = null;
+    showRunStatus("loading", "Loading climatology…");
+    try {
+      climatology = (await api.climatology({ doy_sincos: baselinePayload.doy_sincos, steps })).climatology;
+    } catch (err) {
+      climatologyNote = err.status === 503
+        ? "Climatology is not available on this server."
+        : `Climatology could not be loaded: ${err.message}`;
+    }
+
+    // A difference is only meaningful when both forecasts came from the same model with no fallback.
+    const comparable = !scenario
+      || (baseline.served.model === scenario.served.model && !baseline.served.fallback && !scenario.served.fallback);
+    const info = {
+      caseLabel: activeCase.label,
+      steps,
+      shockLabel,
+      baseline: baseline.served,
+      scenario: scenario ? scenario.served : null,
+      comparable,
+    };
+    store.completeRun({ baseline, scenario, climatology, climatologyNote, info });
+
+    for (const [type, result] of [["baseline", baseline], ["scenario", scenario]]) {
+      if (!result) continue;
+      store.appendRunLog(logEntry(type, {
+        inferenceMs: result.inferenceMs,
+        model: describeServed(result.served),
+        preset: type === "scenario" ? shockLabel : undefined,
+      }));
+    }
+
+    const warnings = [];
+    for (const [name, result] of [["Baseline", baseline], ["Scenario", scenario]]) {
+      if (result?.served.fallback) warnings.push(`${name} used a fallback: ${describeServed(result.served)}.`);
+    }
+    if (!comparable) warnings.push("The two forecasts are not comparable, so no difference is shown.");
+    const reported = store.getState().meta?.model?.name;
+    if (baseline.served.model && !baseline.served.fallback && reported && baseline.served.model !== reported) {
+      warnings.push(`The server's model changed since you connected (${reported} → ${baseline.served.model}). Press Connect.`);
+    }
+    if (climatologyNote) warnings.push(climatologyNote);
+    showNotice(warnings.join(" "));
+    showRunStatus("success", scenario ? "Baseline and scenario received from the server." : "Baseline received from the server.");
   } catch (err) {
-    const msg = formatApiError("Baseline /simulate failed", err);
-    showError(msg);
-    store.appendRunLog({
-      time: new Date().toLocaleTimeString(),
-      type: "baseline",
-      steps: state.steps,
-      error: err.message,
-    });
-    if (els.runBtn) els.runBtn.disabled = false;
-    return;
-  }
-
-  // Scenario (only if shock is active)
-  if (hasShock) {
-    let scenarioPayload;
-    try {
-      scenarioPayload = buildSimulatePayload({
-        activeCase: state.activeCase,
-        steps: state.steps,
-        perturbation: state.shock.perturbation,
-      });
-    } catch (err) {
-      showError(`Scenario payload error: ${err.message}`);
-      if (els.runBtn) els.runBtn.disabled = false;
-      return;
-    }
-
-    try {
-      const res = await api.simulate(scenarioPayload);
-      const scenarioResult = { rollout: res.rollout, inferenceMs: res.inference_ms ?? null };
-      store.setScenarioResult(scenarioResult);
-      store.appendRunLog({
-        time: new Date().toLocaleTimeString(),
-        type: "scenario",
-        steps: state.steps,
-        inferenceMs: scenarioResult.inferenceMs,
-        preset: state.shock.presetId,
-      });
-    } catch (err) {
-      const msg = formatApiError("Scenario /simulate failed", err);
-      showError(msg);
-      store.appendRunLog({
-        time: new Date().toLocaleTimeString(),
-        type: "scenario",
-        steps: state.steps,
-        error: err.message,
-      });
+    store.failRun();
+    store.appendRunLog(logEntry(stage.toLowerCase(), { error: err.message }));
+    const msg = formatApiError(`${stage} forecast failed`, err);
+    showError(`${msg} No forecast is shown.`);
+    showRunStatus("error", "Run failed.");
+    if (err.kind === "network" || err.kind === "timeout") {
+      store.resetConnection(); // the server may have gone or been replaced: do not keep showing its identity
+      renderModelBannerEl(null);
+      setStatus("error", err.kind === "timeout" ? "Timeout (15 s)" : "Offline");
+      if (els.metaSummary) els.metaSummary.textContent = "Not connected: model unknown.";
     }
   }
-
-  if (els.runBtn) els.runBtn.disabled = false;
 }
 
 function formatApiError(prefix, err) {
@@ -802,7 +847,7 @@ function formatApiError(prefix, err) {
   if (err.kind === "network") return `${prefix}: network error — ${err.message}`;
   if (err.kind === "validation") return `${prefix}: 422 Validation — ${err.message}`;
   if (err.kind === "unavailable") return `${prefix}: 503 Service unavailable — ${err.message}`;
-  if (err.kind === "bad_json") return `${prefix}: 400 Bad request — ${err.message}`;
+  if (err.kind === "bad_json") return `${prefix}: bad JSON — ${err.message}`;
   return `${prefix}: ${err.message}`;
 }
 
@@ -810,8 +855,9 @@ function formatApiError(prefix, err) {
 // Bootstrap
 // ---------------------------------------------------------------------------
 async function init() {
-  // Load W3 modules concurrently (non-blocking; fallbacks used if absent)
-  loadW3Modules();
+  await loadW3Modules(); // fallbacks are used if any module is absent
+  const { cases, problems } = await loadCases();
+  if (cases.length) store.setCases([...cases, buildSyntheticCase()]);
 
   // Populate UI structure before API calls
   buildVariableSelector();
@@ -873,7 +919,6 @@ async function init() {
   if (els.clearShockBtn) {
     els.clearShockBtn.addEventListener("click", () => {
       store.setShock("none", null);
-      store.clearScenarioResult();
     });
   }
 
@@ -890,6 +935,7 @@ async function init() {
 
   // Initial connection
   await connectAndLoadMeta();
+  if (problems.length) showNotice(`Demo cases: ${problems.join("; ")}`);
 }
 
 init();

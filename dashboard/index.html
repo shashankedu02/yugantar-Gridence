@@ -166,6 +166,7 @@
 
   <section class="mt-banners" aria-label="System notices">
     <div id="model-banner"></div>
+    <div class="mt-banner mt-banner-warn hidden" role="status"><span id="notice-text"></span></div>
     <div id="error-banner" class="mt-banner mt-banner-error hidden" role="alert">
       <span id="error-banner-text"></span>
       <button id="error-dismiss-btn" class="mt-btn" type="button">Dismiss</button>
@@ -182,6 +183,7 @@
         <button id="run-btn" class="mt-btn mt-btn-primary" type="button" disabled>Run Simulation</button>
         <button id="clear-shock-btn" class="mt-btn" type="button" disabled>Clear Shock</button>
       </div>
+      <div id="run-status" style="margin-top: 10px;" aria-live="polite"></div>
     </aside>
 
     <section class="mt-panel mt-stage" aria-label="Forecast map stage">
@@ -193,6 +195,8 @@
         </div>
         <div class="mt-tabs" id="variable-selector" role="group" aria-label="Weather variable"></div>
       </div>
+
+      <div id="result-provenance" class="mt-mono mt-muted" role="status" style="margin-bottom: 6px;">No forecast on screen.</div>
 
       <div class="mt-canvas-wrap">
         <canvas id="map-canvas" width="576" height="512" aria-label="India 1-degree weather grid"></canvas>

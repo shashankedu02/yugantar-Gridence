@@ -165,6 +165,9 @@ export function createStore() {
     scenario: null,
     difference: null,
     climatology: null,
+    climatologyNote: null,
+    running: false,
+    runInfo: null,
     runLog: [],
     error: null,
   };
@@ -175,10 +178,22 @@ export function createStore() {
     for (const listener of listeners) {
       try {
         listener(state);
-      } catch {
-        // Keep subscribers isolated.
+      } catch (err) {
+        console.error("Store listener failed", err); // isolate subscribers, but never hide their errors
       }
     }
+  }
+
+  // Every forecast product belongs to one run. Anything that changes the run's inputs removes it.
+  function dropResults() {
+    state.baseline = null;
+    state.scenario = null;
+    state.difference = null;
+    state.climatology = null;
+    state.climatologyNote = null;
+    state.runInfo = null;
+    state.view = "baseline";
+    state.dayIndex = 0;
   }
 
   return {
@@ -198,31 +213,37 @@ export function createStore() {
       notify();
     },
     setCases(caseList) {
+      if (state.running) return false;
       const valid = (caseList || []).filter((c) => validateCaseData(c).ok);
       state.cases = valid.length > 0 ? valid : [buildSyntheticCase()];
       state.activeCase = state.cases[0];
-      state.baseline = null;
-      state.scenario = null;
-      state.difference = null;
-      state.dayIndex = 0;
+      state.shock.presetId = "none";
+      state.shock.perturbation = null;
+      dropResults();
       notify();
+      return true;
     },
     selectCase(caseId) {
+      if (state.running) return false;
       const found = state.cases.find((c) => c.id === caseId);
       if (!found) return false;
       state.activeCase = found;
-      state.baseline = null;
-      state.scenario = null;
-      state.difference = null;
-      state.dayIndex = 0;
+      // A preset delta depends on the state it was built from, so it cannot carry over to another case.
+      state.shock.presetId = "none";
+      state.shock.perturbation = null;
+      dropResults();
       notify();
       return true;
     },
     setSteps(steps) {
+      if (state.running) return;
       const n = Math.trunc(Number(steps));
       if (!Number.isFinite(n)) return;
-      state.steps = Math.max(MIN_STEPS, Math.min(MAX_STEPS, n));
-      if (state.dayIndex >= state.steps) state.dayIndex = state.steps - 1;
+      const next = Math.max(MIN_STEPS, Math.min(MAX_STEPS, n));
+      if (next !== state.steps) {
+        state.steps = next;
+        dropResults();
+      }
       notify();
     },
     setView(view) {
@@ -249,36 +270,52 @@ export function createStore() {
       state.playing = Boolean(playing);
       notify();
     },
+    // Choosing or editing a shock never edits an existing result: the old scenario is removed; run again.
     setShock(presetId, perturbation) {
+      if (state.running) return false;
       state.shock.presetId = presetId;
       state.shock.perturbation = perturbation;
+      state.scenario = null;
+      state.difference = null;
+      state.view = "baseline";
+      if (state.runInfo) state.runInfo = { ...state.runInfo, scenario: null };
       notify();
+      return true;
     },
     updateBrush(patch) {
       Object.assign(state.shock.brush, patch);
       notify();
     },
-    setBaselineResult(result) {
-      state.baseline = result;
-      state.difference = computeDifferenceRollout(state.baseline?.rollout, state.scenario?.rollout);
-      if (result?.rollout?.length && state.dayIndex >= result.rollout.length) {
-        state.dayIndex = result.rollout.length - 1;
-      }
+    beginRun() {
+      if (state.running) return false;
+      state.running = true;
+      dropResults();
+      notify();
+      return true;
+    },
+    // Results appear only here, all together, so a view can never mix two runs.
+    completeRun({ baseline, scenario = null, climatology = null, climatologyNote = null, info }) {
+      state.running = false;
+      state.baseline = baseline;
+      state.scenario = scenario;
+      state.difference = scenario && info.comparable
+        ? computeDifferenceRollout(baseline.rollout, scenario.rollout)
+        : null;
+      state.climatology = climatology;
+      state.climatologyNote = climatologyNote;
+      state.runInfo = info;
+      state.dayIndex = 0;
       notify();
     },
-    setScenarioResult(result) {
-      state.scenario = result;
-      state.difference = computeDifferenceRollout(state.baseline?.rollout, state.scenario?.rollout);
+    failRun() {
+      state.running = false;
+      dropResults();
       notify();
     },
-    clearScenarioResult() {
-      state.scenario = null;
-      state.difference = null;
-      if (state.view !== "baseline") state.view = "baseline";
-      notify();
-    },
-    setClimatology(clim) {
-      state.climatology = clim;
+    resetConnection() {
+      state.health = null;
+      state.meta = null;
+      dropResults();
       notify();
     },
     appendRunLog(entry) {

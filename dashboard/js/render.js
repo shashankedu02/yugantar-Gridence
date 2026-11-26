@@ -321,6 +321,7 @@ export function bindTimelineControls({ sliderEl, labelEl, playBtn }, store, { in
   function sync(state) {
     const maxSteps = state.baseline?.rollout?.length || state.steps;
     const hasRollout = Boolean(state.baseline?.rollout?.length || state.scenario?.rollout?.length);
+    if (!hasRollout && timer !== null) stopPlayback();
     if (sliderEl) {
       sliderEl.min = "1";
       sliderEl.max = String(maxSteps);
