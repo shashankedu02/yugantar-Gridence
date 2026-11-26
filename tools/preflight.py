@@ -5,9 +5,10 @@ Checks, on the files git tracks (including staged changes):
   2. no oversized files (over 5 MB outside weights/, over 60 MB anywhere)
   3. no key-like strings in text files (values are masked in the report)
   4. serve.py sits at the repo root
-  5. the official repo scan on a clean copy of the tracked files (needs the kit: pip install third_party\\*.whl)
+  5. the official repo scan on a clean copy of the tracked files (needs the kit: pip install third_party\\*.whl):
+     it must give the full 15 points with no flag at all
   6. the test suite
-Exit code 0 only when everything passes. The expected scan flag until trained weights exist is the missing checkpoint.
+Exit code 0 only when everything passes.
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ BAD_PARTS = {"__pycache__", ".venv", "venv", "env", "node_modules", ".pytest_cac
 SECRET_PATTERNS = [re.compile(p) for p in (
     r"cr_[A-Za-z0-9]{24,}", r"sk-[A-Za-z0-9_-]{20,}", r"AKIA[0-9A-Z]{16}", r"gh[pousr]_[A-Za-z0-9]{30,}",
     r"(?i)(api[_-]?key|secret|token|password)\s*[=:]\s*[\"'][^\"']{12,}[\"']")]
-EXPECTED_FLAG = "no model checkpoint"
+SCAN_FULL_MARKS = 15.0
 
 
 def git(*args: str) -> str:
@@ -83,7 +84,10 @@ def check_scan(files: list[Path]) -> tuple[list[str], str]:
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(p, dst)
         res = scan(Path(tmp))
-    bad = [f"scan flag [{f['level']}] {f['what']} {f.get('file', '')}".strip() for f in res["flags"] if EXPECTED_FLAG not in f["what"]]
+    bad = [f"scan flag [{f['level']}] {f['what']} {f.get('file', '')}".strip() for f in res["flags"]]
+    if res["points"] < SCAN_FULL_MARKS:
+        missing = [name for name, ok in res["health"].items() if not ok]
+        bad.append(f"repo scan gives {res['points']}/15, not {SCAN_FULL_MARKS:g}; failed health checks: {missing or 'none'}")
     return bad, f"repo scan {res['points']}/15, flags: {[f['what'] for f in res['flags']] or 'none'}"
 
 
