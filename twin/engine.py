@@ -255,6 +255,20 @@ class Engine:
     def model_card(self) -> dict | None:
         return self._card
 
+    def served_by(self) -> tuple[str, str]:
+        """(name, note) of the model that answered the latest forecast. `note` is "" unless something fell back.
+
+        In LocalNet mode one request can be answered by DAP, or hold repaired steps; `model_name` alone cannot say so.
+        """
+        last = self.last_request if self.mode == "localnet" else None
+        if last is None:
+            return self.model_name, ""
+        if last["model"] == "dap":
+            return MODEL_NAME_DAP, "whole-request-fallback"
+        if last["repaired_steps"]:
+            return self.model_name, f"repaired-steps={last['repaired_steps']}"
+        return self.model_name, ""
+
     def meta(self) -> dict:
         """Everything the dashboard needs once at start-up. Missing pieces are null, never invented."""
         return {

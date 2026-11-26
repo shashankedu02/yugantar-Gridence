@@ -385,6 +385,23 @@ def test_requests_are_counted_one_by_one_and_success_is_reported_as_localnet(tmp
     assert dap.fallback_requests == 0 and dap.fallback_steps == 0 and dap.last_request is None
 
 
+def test_served_by_names_the_model_that_answered_each_request(tmp_path):
+    engine, dap = _engines(tmp_path)
+    state = days_array(3)
+    engine.simulate(state, PAIR, 10, None)
+    assert engine.served_by() == (engine.model_name, "")
+    original = engine._net.step
+    _failing_step(engine, 2, RuntimeError("boom"))
+    engine.simulate(state, PAIR, 10, None)
+    assert engine.served_by() == (dap.model_name, "whole-request-fallback")   # never reported as LocalNet
+    engine._net.step = original
+    _failing_step(engine, 99, RuntimeError("unused"), nan_at=2)
+    engine.simulate(state, PAIR, 10, None)
+    assert engine.served_by() == (engine.model_name, "repaired-steps=1")
+    dap.simulate(state, PAIR, 10, None)
+    assert dap.served_by() == (dap.model_name, "")
+
+
 def test_repairs_in_a_discarded_forecast_are_not_counted_as_served_steps(tmp_path):
     engine, dap = _engines(tmp_path)
     _failing_step(engine, 6, RuntimeError("late failure"), nan_at=2)

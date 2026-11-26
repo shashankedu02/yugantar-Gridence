@@ -3,4 +3,5 @@ numpy>=1.26
 fastapi>=0.110
 uvicorn>=0.27
 # Imported only when weights/model_select.json selects LocalNet. The server runs on the CPU: a CPU build is enough.
+# CPU inference run and checked on torch 2.6.0+cpu, 2.14.1 and 2.15.0+cpu (Windows). Older releases are untested.
 torch>=2.4

@@ -124,6 +124,16 @@ def test_non_json_body_gets_400(url):
     assert r.status_code == 400
 
 
+def test_simulate_names_the_model_that_answered_without_changing_the_body(url):
+    r = post(url, payload())
+    health = requests.post(url + "/health", timeout=5).json()
+    assert r.headers["X-MonsoonTwin-Model"] == health["model_name"]
+    assert "X-MonsoonTwin-Fallback" not in r.headers
+    assert sorted(r.json()) == ["inference_ms", "rollout"]
+    pre = requests.post(url + SIM_PATH, json=payload(), headers={"Origin": "http://localhost:5500"}, timeout=10)
+    assert "X-MonsoonTwin-Model" in pre.headers.get("access-control-expose-headers", "")   # readable by the dashboard
+
+
 @pytest.mark.parametrize("path", [SIM_PATH, "/climatology"])
 def test_absurdly_deep_json_gets_400_not_500(url, path):
     body = "[" * 20000 + "]" * 20000

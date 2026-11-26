@@ -29,7 +29,9 @@ from twin.wire import WireError, encode_rollout, parse_climatology_request, pars
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+MODEL_HEADER, FALLBACK_HEADER = "X-MonsoonTwin-Model", "X-MonsoonTwin-Fallback"
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+                   expose_headers=[MODEL_HEADER, FALLBACK_HEADER])
 ENGINE = Engine(Path(__file__).resolve().parent / "weights")
 
 
@@ -50,7 +52,12 @@ async def simulate_endpoint(request: Request):
         out = ENGINE.simulate(req.init_states, req.doy_sincos, req.steps, req.perturbation)
     except (WireError, ValueError) as e:
         return JSONResponse({"error": str(e)}, status_code=422)
-    return JSONResponse({"rollout": encode_rollout(out), "inference_ms": (time.perf_counter() - t0) * 1000.0})
+    name, note = ENGINE.served_by()          # read before any await, so it belongs to this request
+    headers = {MODEL_HEADER: name}
+    if note:
+        headers[FALLBACK_HEADER] = note
+    return JSONResponse({"rollout": encode_rollout(out), "inference_ms": (time.perf_counter() - t0) * 1000.0},
+                        headers=headers)
 
 
 @app.post("/meta")

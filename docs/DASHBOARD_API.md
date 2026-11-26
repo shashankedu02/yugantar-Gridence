@@ -22,6 +22,7 @@ No body. `200 {"status": "ready", "model_name": "..."}`.
 - `doy_sincos`: `[sin(2π n/365), cos(2π n/365)]` for the **last** input day, `n` = day of year.
 - `perturbation`: a **delta** in physical units. The server adds it to `init_states[-1]`, so do not add it yourself.
 - Response: `{"rollout": [steps,6,32,36], "inference_ms": number}`; `rollout[k]` is day k+1. Rain is never negative, every value is finite.
+- Response header `X-MonsoonTwin-Model` names the model that **answered this request**. `X-MonsoonTwin-Fallback` is present only if something fell back (`whole-request-fallback` or `repaired-steps=n`). The JSON body is unchanged. Label each forecast with the header, not with `/meta`.
 - A baseline run and a scenario run differ only in `perturbation`. A zero perturbation gives a result identical to `null`.
 
 **Shock presets (the organisers' definitions; the dashboard computes the delta from the current last day):**
