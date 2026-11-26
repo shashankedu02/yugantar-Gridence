@@ -1,4 +1,6 @@
-# Inference dependencies (the judge sandbox provides these; torch is added when LocalNet exists).
+# Inference dependencies (the judge sandbox provides these).
 numpy>=1.26
 fastapi>=0.110
 uvicorn>=0.27
+# Imported only when weights/model_select.json selects LocalNet. The server runs on the CPU: a CPU build is enough.
+torch>=2.4

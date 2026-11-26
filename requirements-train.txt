@@ -1,4 +1,7 @@
 # Training / evaluation / tests (never needed by the judged server).
+# GPU training (W1's Windows machine, Python 3.13, NVIDIA driver >= 580): install this build FIRST, so that the plain
+# "torch" line in requirements-serve.txt is already satisfied:
+#   pip install --index-url https://download.pytorch.org/whl/cu130 "torch==2.14.1+cu130"
 -r requirements-serve.txt
 scipy>=1.11
 xarray>=2024.1

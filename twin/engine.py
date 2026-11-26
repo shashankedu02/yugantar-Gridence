@@ -4,13 +4,20 @@ Modes, decided once at start-up from the files in `weights/`:
   persistence  no weights present: repeats the last day. A PLACEHOLDER, not a forecasting model.
   dap          `climatology.npz` and `dap.npz` present: damped anomaly persistence. Fitted by
                `training/fit_dap.py`; NOT validated until it passes checkpoint G-DAP.
-LocalNet is not implemented yet.
+  localnet     only when `model_select.json` names it (a checkpoint file alone changes nothing). It needs the DAP
+               files too. If the selected checkpoint cannot be used, the engine serves DAP, says so in `model_name`
+               and keeps the reason in `selection_error`. A non-finite LocalNet step is replaced by one DAP step and
+               counted in `fallback_steps`. A runtime error during a LocalNet forecast discards that forecast; the whole
+               request is then answered by DAP, counted in `fallback_requests`, with the reason in
+               `last_fallback_reason`. `last_request` says which model answered the latest request made in LocalNet
+               mode. Evaluation must check all of these, or DAP results could pass as LocalNet's.
 
 Guarantees (docs/SYSTEM_ARCHITECTURE.md section 4.1): deterministic; a zero perturbation gives output
 bit-identical to no perturbation; all output finite and inside the physical limits.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -25,7 +32,10 @@ log = logging.getLogger("twin.engine")
 
 MODEL_NAME_PLACEHOLDER = "placeholder-persistence"
 MODEL_NAME_DAP = "monsoontwin-dap-unvalidated"
+MODEL_NAME_LOCALNET = "monsoontwin-localnet-c{channels}-unvalidated"
+CPU_THREADS = 4
 MAX_STEPS = 30
+_SELECT_FILE = "model_select.json"  # optional: {"active": "dap" | "localnet", "localnet_file": ..., "sha256": ...}
 _CLIM_FILE = "climatology.npz"
 _DAP_FILE = "dap.npz"
 _STATIC_FILE = "static.npz"        # optional: array 'static' [2,32,36] = land_sea_mask, orography_m
@@ -76,8 +86,120 @@ class Engine:
                 f"No model files in {self.weights_dir}. Expected {_CLIM_FILE} and {_DAP_FILE}, "
                 "produced by `python -m training.fit_dap` from the real training dataset.")
         self._load_optional()
+        self._net = None
+        self.selection_error: str | None = None
+        self._reset_fallback_accounting()
+        self._apply_selection()
         warm = np.broadcast_to(_WARMUP_STATE[None, :, None, None], (3, 6, 32, 36)).astype(np.float32)
-        self.simulate(warm, (0.0, 1.0), 2, None)
+        if self._net is not None:
+            try:
+                self.simulate(warm, (0.0, 1.0), 2, None)
+                if self.fallback_requests:                    # a runtime error was caught and answered by DAP
+                    raise RuntimeError(f"LocalNet failed during warm-up: {self.last_fallback_reason}")
+                if self.fallback_steps:
+                    raise FloatingPointError("LocalNet produced non-finite values during warm-up")
+                self.last_request = None                      # the warm-up is not a client request
+            except Exception as exc:                          # never report ready with a model that cannot run
+                self._reject_localnet(exc)
+        if self._net is None:
+            self.simulate(warm, (0.0, 1.0), 2, None)
+
+    def _reset_fallback_accounting(self) -> None:
+        self.fallback_steps = 0                       # DAP steps inside LocalNet forecasts that were served
+        self.fallback_requests = 0                    # requests answered entirely by DAP after a LocalNet error
+        self.last_fallback_reason: str | None = None  # reason of the latest whole-request fallback
+        self.last_request: dict | None = None         # {"model", "repaired_steps", "fallback_reason"}
+
+    def _apply_selection(self) -> None:
+        """Explicit model choice. Without the selection file, nothing here changes the behaviour."""
+        p = self.weights_dir / _SELECT_FILE
+        if not p.is_file():
+            return
+        try:
+            choice = json.loads(p.read_text(encoding="utf-8-sig"))      # accepts a byte-order mark (Windows editors)
+            active = choice["active"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise MissingWeightsError(f"{_SELECT_FILE} must be a JSON object with an 'active' field: {exc}") from exc
+        if active not in ("dap", "localnet"):
+            raise MissingWeightsError(f"{_SELECT_FILE}: 'active' must be 'dap' or 'localnet', got {active!r}")
+        if self.mode != "dap":
+            raise MissingWeightsError(
+                f"{_SELECT_FILE} selects {active!r}, but {_CLIM_FILE} and {_DAP_FILE} are missing "
+                "(DAP is the selected model or the required fallback)")
+        if active == "dap":
+            return
+        try:
+            name, expected = choice["localnet_file"], str(choice["sha256"]).lower()
+            if not isinstance(name, str) or Path(name).name != name:
+                raise ValueError("'localnet_file' must be a plain file name inside the weights folder")
+            checkpoint = self.weights_dir / name
+            actual = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"{name}: sha256 {actual[:12]}... does not match {_SELECT_FILE}")
+            import torch                                       # imported only when LocalNet is selected
+
+            from .net import load_checkpoint
+
+            torch.set_num_threads(CPU_THREADS)
+            model, info = load_checkpoint(checkpoint)
+            clim_hash = hashlib.sha256((self.weights_dir / _CLIM_FILE).read_bytes()).hexdigest()
+            if info.get("climatology_sha256") != clim_hash:
+                raise ValueError(f"{name} was trained with a different {_CLIM_FILE}")
+            self._net = model
+            self.mode, self.model_name = "localnet", MODEL_NAME_LOCALNET.format(channels=model.channels)
+            log.warning("LocalNet selected and loaded from %s. It is NOT validated by loading it.", checkpoint)
+        except Exception as exc:
+            self._reject_localnet(exc)
+
+    def _reject_localnet(self, exc: Exception) -> None:
+        self._net = None
+        self.mode, self.model_name = "dap", MODEL_NAME_DAP
+        self.selection_error = f"{type(exc).__name__}: {exc}"
+        self._reset_fallback_accounting()
+        log.error("The selected LocalNet cannot be used, serving DAP instead. %s", self.selection_error)
+
+    def _forecast_localnet(self, earlier: np.ndarray, last: np.ndarray, n0: int, steps: int) -> np.ndarray:
+        """One request in LocalNet mode: the complete LocalNet forecast, or, after any error, the complete DAP one.
+
+        earlier [2,6,32,36] are days t-2 and t-1; last [6,32,36] is day t with the perturbation applied and limited.
+        A partial LocalNet forecast is never returned or mixed into the DAP fallback.
+        """
+        repaired: list[int] = []
+        try:
+            out = self._run_localnet(np.concatenate([earlier, last[None]]), n0, steps, repaired)
+            if out.shape != (steps, 6, 32, 36) or not all_finite(out):
+                raise FloatingPointError(f"LocalNet returned an unusable forecast of shape {out.shape}")
+        except Exception as exc:
+            reason = f"{type(exc).__name__}: {exc}"
+            self.fallback_requests += 1
+            self.last_fallback_reason = reason
+            self.last_request = {"model": "dap", "repaired_steps": 0, "fallback_reason": reason}
+            log.error("LocalNet failed: this WHOLE request is answered by DAP, not LocalNet. %s", reason, exc_info=True)
+            return self._dap.forecast(last, n0, steps, self._clim)
+        self.fallback_steps += len(repaired)
+        self.last_request = {"model": "localnet", "repaired_steps": len(repaired), "fallback_reason": None}
+        return out
+
+    def _run_localnet(self, history: np.ndarray, n0: int, steps: int, repaired: list[int]) -> np.ndarray:
+        """history [3,6,32,36] physical -> [steps,6,32,36] physical. Appends the lead of every repaired step."""
+        import torch
+
+        from .net import to_model_space, to_physical
+
+        def repair(lead: int, history_z, raw):
+            if bool(torch.isfinite(raw).all()):
+                return raw
+            current = clamp_state(to_physical(history_z[:, -1])[0].numpy())
+            n_current = n0 if lead == 1 else doy.advance(n0, lead - 1)
+            step = self._dap.forecast(current, n_current, 1, self._clim)[0]
+            repaired.append(lead)
+            log.error("LocalNet step %d was not finite: replaced by one DAP step", lead)
+            return to_model_space(torch.from_numpy(clamp_state(step))[None])
+
+        with torch.inference_mode():
+            table = torch.from_numpy(self._clim.table)
+            states, _ = self._net.rollout(torch.from_numpy(history.copy())[None], np.array([n0]), steps, table, repair)
+            return to_physical(states[0]).numpy()
 
     def _load_optional(self) -> None:
         """Dashboard-side files. Each is optional; absent means the matching endpoint says so instead of guessing."""
@@ -171,6 +293,10 @@ class Engine:
         if self.mode == "dap":
             n0 = doy.from_sincos(*doy_sincos)
             out = self._dap.forecast(last, n0, int(steps), self._clim)
+        elif self.mode == "localnet":
+            # Same shock semantics as DAP: only the last day carries the perturbation; days t-2 and t-1 are untouched.
+            n0 = doy.from_sincos(*doy_sincos)       # outside the fallback: a bad request stays an input error
+            out = self._forecast_localnet(x[:2], last, n0, int(steps))
         else:
             out = np.repeat(last[None], steps, axis=0)
         out = clamp_state(out)
