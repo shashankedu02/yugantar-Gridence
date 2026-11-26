@@ -161,6 +161,14 @@
     #legend-container .mt-legend-bar { height: 9px; }
     .mt-stage > div:last-child { margin-top: 6px !important; }
     .mt-caption { font-size: 11px; }
+    .mt-custom { margin-bottom: 10px; }
+    .mt-custom > summary { display: inline-block; list-style: none; }
+    .mt-custom .mt-field { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 12px; }
+    .mt-custom .mt-input, .mt-custom .mt-select { width: 100%; padding: 4px 8px; }
+    .mt-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+    .mt-field-row > .mt-btn { grid-column: 1 / -1; }
+    .mt-custom .mt-btn { margin-top: 8px; }
+    #custom-pick[aria-pressed="true"] { border-color: #f4a261; }
     .mt-fallback-pre { font-size: 11px; overflow: auto; max-height: 120px; }
     .mt-error-text { color: var(--mt-danger, #ef5350); }
     #run-log { max-height: 120px; overflow: auto; font-size: 11px; }

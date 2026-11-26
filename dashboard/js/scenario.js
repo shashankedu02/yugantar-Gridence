@@ -213,3 +213,75 @@ export function buildSimulatePayload({ activeCase, steps, perturbation = null })
   }
   return payload;
 }
+
+/**
+ * Input limits for custom shocks. They keep a mistyped number from being sent; they are not a statement about
+ * which shocks the model handles well. [min, max] for "add" (physical units) and "scale_pct" (percent of the cell).
+ */
+export const CUSTOM_LIMITS = Object.freeze([
+  { add: [-20, 20], scale_pct: [-5, 5] },          // t2m, K
+  { add: [-300, 300], scale_pct: [-100, 500] },    // tp, mm/day
+  { add: [-30, 30], scale_pct: [-100, 200] },      // u10, m/s
+  { add: [-30, 30], scale_pct: [-100, 200] },      // v10, m/s
+  { add: [-5000, 5000], scale_pct: [-3, 3] },      // msl, Pa
+  { add: [-40, 40], scale_pct: [-100, 100] },      // tcwv, kg/m2
+]);
+// The server's physical limits (docs, guards): a shocked input outside them is moved to the limit before forecasting.
+const STATE_LIMITS = [[233.2, 333.1], [0, 1000], [-60, 60], [-60, 60], [85000, 110000], [0, 100]];
+
+/**
+ * Add one component to a perturbation [6][32][36] (a physical delta on the last input day), without mutating inputs.
+ * spec: { channelIndex, op: "add"|"scale_pct", value, shape: "rectangle"|"smooth",
+ *         latMin, latMax, lonMin, lonMax  (rectangle),  lat, lon, radiusCells  (smooth) }
+ * Returns { perturbation, cells, clampedCells }. Throws Error with a message for the user.
+ */
+export function addShockComponent(perturbation, initStates, spec, grid = null) {
+  const { channelIndex: ch, op, value, shape } = spec;
+  if (!Number.isInteger(ch) || ch < 0 || ch > 5) throw new Error("Choose a variable.");
+  if (op !== "add" && op !== "scale_pct") throw new Error("Choose an operation.");
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Enter a number for the size of the change.");
+  const [lo, hi] = CUSTOM_LIMITS[ch][op];
+  if (value < lo || value > hi) throw new Error(`The change must be between ${lo} and ${hi} for this variable.`);
+  if (value === 0) throw new Error("A change of 0 does nothing. Use None / Clear for no shock.");
+  const { lat, lon } = getLatLonArrays(grid);
+  const inRange = (v, min, max) => Number.isFinite(v) && v >= min && v <= max;
+  let out;
+  if (shape === "rectangle") {
+    const { latMin, latMax, lonMin, lonMax } = spec;
+    if (![latMin, latMax, lonMin, lonMax].every(Number.isFinite) || latMin > latMax || lonMin > lonMax) {
+      throw new Error("Enter a latitude range and a longitude range (from ≤ to).");
+    }
+    const rows = lat.map((v, i) => i).filter((i) => lat[i] >= latMin && lat[i] <= latMax);
+    const cols = lon.map((v, i) => i).filter((i) => lon[i] >= lonMin && lon[i] <= lonMax);
+    if (!rows.length || !cols.length) throw new Error("No grid cell centre lies in that rectangle (6.5–37.5°N, 65.5–100.5°E).");
+    out = applyBoxToPerturbation(perturbation, initStates, {
+      rowMin: rows[0], rowMax: rows[rows.length - 1], colMin: cols[0], colMax: cols[cols.length - 1],
+      channelIndex: ch, op, value,
+    });
+  } else if (shape === "smooth") {
+    if (!inRange(spec.lat, lat[0] - 0.5, lat[lat.length - 1] + 0.5) || !inRange(spec.lon, lon[0] - 0.5, lon[lon.length - 1] + 0.5)) {
+      throw new Error("The centre must be on the grid (6.5–37.5°N, 65.5–100.5°E). Click the map to set it.");
+    }
+    if (!Number.isInteger(spec.radiusCells) || spec.radiusCells < 1 || spec.radiusCells > 10) {
+      throw new Error("The radius must be a whole number of cells from 1 to 10.");
+    }
+    const nearest = (axis, v) => axis.reduce((best, x, i) => (Math.abs(x - v) < Math.abs(axis[best] - v) ? i : best), 0);
+    out = applyBrushToPerturbation(perturbation, initStates, {
+      row: nearest(lat, spec.lat), col: nearest(lon, spec.lon), channelIndex: ch, op, value,
+      radiusCells: spec.radiusCells, shape: "gaussian",
+    });
+  } else {
+    throw new Error("Choose a shape.");
+  }
+  let cells = 0;
+  let clampedCells = 0;
+  const before = perturbation;
+  for (let r = 0; r < GRID.rows; r++) {
+    for (let c = 0; c < GRID.cols; c++) {
+      if (out[ch][r][c] !== (before ? before[ch][r][c] : 0)) cells++;
+      const shocked = initStates[2][ch][r][c] + out[ch][r][c];
+      if (out[ch][r][c] !== 0 && (shocked < STATE_LIMITS[ch][0] || shocked > STATE_LIMITS[ch][1])) clampedCells++;
+    }
+  }
+  return { perturbation: out, cells, clampedCells };
+}

@@ -1,0 +1,8 @@
+{
+ "cases": [
+  "monsoon-active.json",
+  "monsoon-weak.json",
+  "pre-monsoon-heat.json",
+  "winter.json"
+ ]
+}

@@ -271,8 +271,9 @@ export function createStore() {
       notify();
     },
     // Choosing or editing a shock never edits an existing result: the old scenario is removed; run again.
-    setShock(presetId, perturbation) {
+    setShock(presetId, perturbation, label = null) {
       if (state.running) return false;
+      state.shock.label = label;
       state.shock.presetId = presetId;
       state.shock.perturbation = perturbation;
       state.scenario = null;

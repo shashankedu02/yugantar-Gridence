@@ -22,11 +22,12 @@ import {
   buildPresetPerturbation,
   buildSimulatePayload,
   clonePerturbation,
+  addShockComponent,
   createZeroPerturbation,
   isZeroPerturbation,
 } from "./scenario.js";
 import { loadCases } from "./cases.js";
-import { energyByDistance } from "./analysis.js";
+import { energyByDistance, impactCards, impactNumbers } from "./analysis.js";
 import { buildSyntheticCase } from "./state.js";
 import {
   renderMapCanvas,
@@ -249,11 +250,11 @@ function renderFallbackImpactCards(el, indicators) {
     `${ind.label}: ${ind.value} ${ind.unit ?? ""}${ind.isProxy ? " (proxy)" : ""}${ind.note ? ` — ${ind.note}` : ""}`)));
 }
 
-function renderImpactCardsEl(indicators) {
+function renderImpactCardsEl(el, indicators) {
   if (w3Impact?.renderImpactCards) {
-    try { w3Impact.renderImpactCards(els.impactContainer, indicators); return; } catch {}
+    try { w3Impact.renderImpactCards(el, indicators); return; } catch (err) { console.error(err); }
   }
-  renderFallbackImpactCards(els.impactContainer, indicators);
+  renderFallbackImpactCards(el, indicators);
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +294,7 @@ function populateCaseSelect() {
     const opt = document.createElement("option");
     opt.value = c.id;
     opt.textContent = c.label || c.id;
+    if (c.selection_rule) opt.title = `${c.selection_rule}. ${c.source || ""}`;
     els.caseSelect.appendChild(opt);
   }
   if (state.activeCase) els.caseSelect.value = state.activeCase.id;
@@ -400,6 +402,131 @@ function buildScenarioControls() {
   }
 
   els.scenarioControls.appendChild(presetsRow);
+  buildCustomShockPanel();
+}
+
+// ---------------------------------------------------------------------------
+// Custom shock: one or more components, each a physical delta on the last input day
+// ---------------------------------------------------------------------------
+let _picking = false;
+let _components = [];
+
+function field(labelText, control) {
+  const wrap = node("label", "mt-field");
+  wrap.append(node("span", "mt-muted", labelText), control);
+  return wrap;
+}
+
+function numberInput(id, value, step = "any") {
+  const el = node("input", "mt-input mt-mono");
+  el.id = id;
+  el.type = "number";
+  el.step = step;
+  el.value = value;
+  return el;
+}
+
+function select(id, options) {
+  const el = node("select", "mt-select");
+  el.id = id;
+  for (const [value, text] of options) {
+    const o = node("option", "", text);
+    o.value = value;
+    el.appendChild(o);
+  }
+  return el;
+}
+
+function buildCustomShockPanel() {
+  const box = node("details", "mt-custom");
+  box.id = "custom-shock";
+  box.appendChild(node("summary", "mt-btn", "Custom shock"));
+  const ch = select("custom-channel", CHANNELS.map((c, i) => [String(i), `${c.shortLabel} (${c.unit})`]));
+  const op = select("custom-op", [["add", "add (units)"], ["scale_pct", "change by %"]]);
+  const shape = select("custom-shape", [["rectangle", "rectangle"], ["smooth", "smooth blob"]]);
+  const rect = node("div", "mt-field-row");
+  rect.id = "custom-rect";
+  rect.append(field("Lat from °N", numberInput("custom-lat-min", "10")), field("to", numberInput("custom-lat-max", "18")),
+    field("Lon from °E", numberInput("custom-lon-min", "66")), field("to", numberInput("custom-lon-max", "73")));
+  const blob = node("div", "mt-field-row hidden");
+  blob.id = "custom-blob";
+  const pick = node("button", "mt-btn", "Pick centre on map");
+  pick.type = "button";
+  pick.id = "custom-pick";
+  pick.setAttribute("aria-pressed", "false");
+  pick.addEventListener("click", () => setPicking(!_picking));
+  blob.append(field("Centre °N", numberInput("custom-lat", "15.5")), field("Centre °E", numberInput("custom-lon", "88.5")),
+    field("Radius (cells)", numberInput("custom-radius", "3", "1")), pick);
+  shape.addEventListener("change", () => {
+    rect.classList.toggle("hidden", shape.value !== "rectangle");
+    blob.classList.toggle("hidden", shape.value !== "smooth");
+    if (shape.value !== "smooth") setPicking(false);
+  });
+  const add = node("button", "mt-btn mt-btn-primary", "Add to shock");
+  add.type = "button";
+  add.id = "custom-add";
+  add.addEventListener("click", addCustomComponent);
+  const msg = node("div", "mt-caption");
+  msg.id = "custom-message";
+  msg.setAttribute("role", "status");
+  const list = node("ul", "mt-caption");
+  list.id = "custom-list";
+  box.append(field("Variable", ch), field("Operation", op), field("Size of change", numberInput("custom-value", "2")),
+    field("Shape", shape), rect, blob, add, msg, list,
+    node("p", "mt-muted mt-caption", "The change is added to the last input day only. Press Run to forecast it. Changes far outside real weather give unreliable forecasts."));
+  els.scenarioControls.appendChild(box);
+}
+
+function setPicking(on) {
+  _picking = on;
+  const btn = document.getElementById("custom-pick");
+  if (btn) {
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "Click a map cell…" : "Pick centre on map";
+  }
+}
+
+function pickCentre(cell) {
+  const meta = store.getState().meta;
+  document.getElementById("custom-lat").value = String(meta?.grid?.lat?.[cell.row] ?? GRID.latMin + cell.row);
+  document.getElementById("custom-lon").value = String(meta?.grid?.lon?.[cell.col] ?? GRID.lonMin + cell.col);
+  setPicking(false);
+}
+
+function addCustomComponent() {
+  const st = store.getState();
+  if (st.running) return;
+  const val = (id) => document.getElementById(id).value;
+  const num = (id) => (val(id).trim() === "" ? NaN : Number(val(id)));
+  const spec = {
+    channelIndex: Number(val("custom-channel")), op: val("custom-op"), value: num("custom-value"), shape: val("custom-shape"),
+    latMin: num("custom-lat-min"), latMax: num("custom-lat-max"), lonMin: num("custom-lon-min"), lonMax: num("custom-lon-max"),
+    lat: num("custom-lat"), lon: num("custom-lon"), radiusCells: num("custom-radius"),
+  };
+  const msg = document.getElementById("custom-message");
+  try {
+    const continuing = st.shock.presetId === "custom";
+    const result = addShockComponent(continuing ? st.shock.perturbation : null, st.activeCase.init_states, spec, st.meta?.grid || null);
+    const ch = CHANNELS[spec.channelIndex];
+    const where = spec.shape === "rectangle"
+      ? `${spec.latMin}–${spec.latMax}°N, ${spec.lonMin}–${spec.lonMax}°E`
+      : `smooth, centre ${spec.lat}°N ${spec.lon}°E, radius ${spec.radiusCells}`;
+    const what = `${ch.shortLabel} ${spec.value > 0 ? "+" : ""}${spec.value}${spec.op === "add" ? ` ${ch.unit}` : " %"}, ${where} (${result.cells} cells)`;
+    _components = continuing ? [..._components, what] : [what];
+    store.setShock("custom", result.perturbation, `Custom: ${_components.join("; ")}`);
+    msg.textContent = result.clampedCells
+      ? `Added. In ${result.clampedCells} cells the result is outside physical limits; the server moves it to the limit.`
+      : "Added. Press Run to forecast it.";
+  } catch (err) {
+    msg.textContent = err.message;
+  }
+}
+
+function syncCustomList(state) {
+  const list = document.getElementById("custom-list");
+  if (!list) return;
+  if (state.shock.presetId !== "custom") _components = [];
+  list.replaceChildren(..._components.map((c) => node("li", "", c)));
 }
 
 function syncScenarioControls(state) {
@@ -409,6 +536,8 @@ function syncScenarioControls(state) {
     const isActive = btn.dataset.presetId === state.shock.presetId;
     btn.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
+
+  syncCustomList(state);
 
   const stepsInput = document.getElementById("steps-input");
   if (stepsInput && document.activeElement !== stepsInput) {
@@ -531,63 +660,50 @@ function renderEnergyChart(state) {
 }
 
 // ---------------------------------------------------------------------------
-// Impact cards
+// Monsoon Impact Lens: proxies computed from the forecast arrays on screen
 // ---------------------------------------------------------------------------
+let _impactKey = null;
+
 function renderImpact(state) {
+  const el = els.impactContainer;
+  if (!el) return;
   if (!state.baseline?.rollout) {
-    if (els.impactContainer) els.impactContainer.textContent = "Waiting for rollout / climatology.";
+    _impactKey = null;
+    el.textContent = "Run a forecast to see rain and heat indicators.";
     return;
   }
-
-  const ch_tp = 1; // tp channel
-  const rollout = state.baseline.rollout;
-  const steps = rollout.length;
-  let totalRain = 0; let n = 0;
-  for (let d = 0; d < steps; d++) {
-    for (let r = 0; r < GRID.rows; r++) {
-      for (let c = 0; c < GRID.cols; c++) {
-        const v = rollout[d]?.[ch_tp]?.[r]?.[c];
-        if (Number.isFinite(v)) { totalRain += v; n++; }
-      }
-    }
-  }
-  const meanRain = n > 0 ? totalRain / n : 0;
-
-  const indicators = [
-    {
-      id: "mean_tp",
-      label: "Mean Precipitation",
-      value: meanRain.toFixed(2),
-      unit: "mm/day",
-      status: meanRain > 5 ? "elevated" : "nominal",
-      note: "domain-mean across rollout days",
-      isProxy: true,
-    },
-  ];
-
-  if (state.difference) {
-    let diffMeanT = 0; let dn = 0;
-    const diff = state.difference;
-    for (let d = 0; d < diff.length; d++) {
-      for (let r = 0; r < GRID.rows; r++) {
-        for (let c = 0; c < GRID.cols; c++) {
-          const v = diff[d]?.[0]?.[r]?.[c]; // t2m diff
-          if (Number.isFinite(v)) { diffMeanT += v; dn++; }
-        }
-      }
-    }
-    indicators.push({
-      id: "mean_t2m_diff",
-      label: "Mean ΔT2m (scenario−baseline)",
-      value: dn > 0 ? (diffMeanT / dn).toFixed(3) : "—",
-      unit: "K",
-      status: "nominal",
-      note: "domain-mean temperature anomaly",
-      isProxy: true,
-    });
-  }
-
-  renderImpactCardsEl(indicators);
+  // Rebuild only when the results change, so an open method popover stays open while the day or variable changes.
+  const key = [state.baseline, state.scenario, state.climatology];
+  if (_impactKey && key.every((v, i) => v === _impactKey[i])) return;
+  _impactKey = key;
+  const perturbation = state.scenario ? state.runInfo?.perturbation : null;
+  const numbers = impactNumbers({
+    baseline: state.baseline.rollout,
+    scenario: state.difference ? state.scenario.rollout : null,
+    climatology: state.climatology,
+    landMask: state.meta?.land_sea_mask || null,
+    perturbation,
+  });
+  const cards = impactCards(numbers, {
+    steps: state.baseline.rollout.length,
+    modelMode: state.meta?.model?.mode,
+    rainShocked: Boolean(perturbation && perturbation[1].some((row) => row.some((v) => v !== 0))),
+  });
+  const heading = node("div", "mt-caption mt-muted", state.difference
+    ? "Value = scenario. B: baseline, S: scenario, Δ: scenario − baseline. All are proxies computed from this forecast."
+    : "Baseline forecast only. All are proxies computed from this forecast.");
+  const cardBox = node("div");
+  const chartTitle = node("div", "mt-caption mt-muted", "Core monsoon zone: daily rain by forecast day");
+  const chart = node("div");
+  chart.id = "impact-series";
+  el.replaceChildren(heading, cardBox, chartTitle, chart);
+  renderImpactCardsEl(cardBox, cards);
+  const series = [{ name: "Baseline", values: numbers.daily.baseline }];
+  if (numbers.daily.scenario) series.push({ name: "Scenario", values: numbers.daily.scenario });
+  if (numbers.daily.climatology) series.push({ name: "Climatology", values: numbers.daily.climatology });
+  const data = { labels: numbers.daily.baseline.map((_, i) => `D${i + 1}`), series, unit: "mm/day" };
+  if (w3Charts?.renderSeries) w3Charts.renderSeries(chart, data);
+  else renderFallbackSeries(chart, data);
 }
 
 // ---------------------------------------------------------------------------
@@ -900,6 +1016,7 @@ async function init() {
       redrawMap(store.getState());
     },
     onClick: (cell) => {
+      if (_picking) pickCentre(cell);
       store.setSelectedCell(cell);
     },
   });
