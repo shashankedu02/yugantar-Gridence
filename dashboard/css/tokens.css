@@ -1,0 +1,84 @@
+/* ==========================================================================
+   MonsoonTwin — Monsoon Observatory Design Tokens
+   Authoritative visual system for W3 (UI/UX & Impact Visualisation)
+   No external fonts, no CDNs. Offline-first.
+   ========================================================================== */
+
+:root {
+  /* Surfaces & Canvas */
+  --mt-bg-canvas: #0B1220;
+  --mt-bg-surface: #111A2B;
+  --mt-bg-elevated: #162238;
+  --mt-bg-inset: #080E19;
+  --mt-bg-glass: rgba(17, 26, 43, 0.88);
+
+  /* Borders & Hairlines */
+  --mt-border-hairline: #1F2A3D;
+  --mt-border-subtle: #28364F;
+  --mt-border-focus: #2EC4B6;
+
+  /* Text Hierarchy (WCAG AA >= 4.5:1 on #0B1220 and #111A2B) */
+  --mt-text-primary: #F1F5F9;     /* > 15:1 on #0B1220 */
+  --mt-text-secondary: #B8C4D8;   /* > 8.5:1 on #111A2B */
+  --mt-text-muted: #8A99B3;       /* > 5.4:1 on #111A2B */
+  --mt-text-inverse: #07101C;
+
+  /* Brand & Semantic Accents */
+  --mt-accent-primary: #2EC4B6;       /* Monsoon Teal — primary actions & baseline */
+  --mt-accent-primary-dim: rgba(46, 196, 182, 0.14);
+  --mt-accent-primary-border: rgba(46, 196, 182, 0.42);
+
+  --mt-accent-scenario: #F4A261;      /* Amber — strictly for scenario / perturbed */
+  --mt-accent-scenario-dim: rgba(244, 162, 97, 0.15);
+  --mt-accent-scenario-border: rgba(244, 162, 97, 0.45);
+
+  --mt-status-ok: #38D399;
+  --mt-status-ok-dim: rgba(56, 211, 153, 0.14);
+  --mt-status-warn: #FBBF24;
+  --mt-status-warn-dim: rgba(251, 191, 36, 0.15);
+  --mt-status-warn-border: rgba(251, 191, 36, 0.45);
+  --mt-status-danger: #F87171;
+  --mt-status-danger-dim: rgba(248, 113, 113, 0.15);
+  --mt-status-danger-border: rgba(248, 113, 113, 0.45);
+
+  /* Typography (System stacks until W2 vendors Inter & JetBrains Mono) */
+  --mt-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mt-font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* Type Scale (12 / 14 / 16 / 20 / 28 px) */
+  --mt-text-xs: 12px;
+  --mt-text-sm: 14px;
+  --mt-text-base: 16px;
+  --mt-text-lg: 20px;
+  --mt-text-xl: 28px;
+
+  /* Spacing Scale */
+  --mt-space-1: 4px;
+  --mt-space-2: 8px;
+  --mt-space-3: 12px;
+  --mt-space-4: 16px;
+  --mt-space-5: 20px;
+  --mt-space-6: 24px;
+
+  /* Radii */
+  --mt-radius-sm: 6px;
+  --mt-radius-md: 10px;
+  --mt-radius-lg: 14px;
+  --mt-radius-pill: 9999px;
+
+  /* Depth & Shadows (subtle, low-glare) */
+  --mt-shadow-panel: 0 8px 24px rgba(3, 7, 15, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --mt-shadow-popover: 0 12px 32px rgba(2, 6, 14, 0.72);
+
+  /* Motion */
+  --mt-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mt-dur-fast: 150ms;
+  --mt-dur-panel: 220ms;
+
+  /* Layout Dimensions */
+  --mt-topbar-h: 56px;
+  --mt-rail-left-w: 292px;
+  --mt-rail-right-w: 312px;
+  --mt-z-drawer: 40;
+  --mt-z-popover: 60;
+}

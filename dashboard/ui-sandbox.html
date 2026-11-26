@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonsoonTwin — UI Observatory Sandbox (Synthetic Mock Data)</title>
+  <link rel="stylesheet" href="./css/tokens.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/layout.css">
+  <link rel="stylesheet" href="./css/components.css">
+</head>
+<body class="mt-body">
+  <a class="mt-skip-link" href="#mt-main-stage">Skip to map stage</a>
+
+  <div class="mt-shell">
+    <!-- TOP BAR -->
+    <header class="mt-topbar" aria-label="Observatory controls">
+      <div class="mt-brand">
+        <button type="button" class="mt-btn mt-drawer-trigger" id="btn-open-left" aria-expanded="false" aria-controls="rail-left">
+          Scenario
+        </button>
+        <div class="mt-brand-mark" aria-hidden="true">MT</div>
+        <div>
+          <h1 class="mt-brand-title">MonsoonTwin Observatory</h1>
+          <div class="mt-brand-sub">W3 UI Sandbox · 1° India Domain (6.5°–37.5°N, 65.5°–100.5°E)</div>
+        </div>
+      </div>
+
+      <div class="mt-topbar-group">
+        <label class="mt-sr-only" for="sandbox-state-select">Sandbox Model State</label>
+        <select id="sandbox-state-select" class="mt-select" style="width: auto;" aria-label="Sandbox model state">
+          <option value="placeholder">State: placeholder-persistence (unvalidated)</option>
+          <option value="validated">State: sandbox-mock-model (validated)</option>
+          <option value="clim503">State: climatology 503 unavailable</option>
+          <option value="malformed">Edge Test: empty / malformed inputs</option>
+        </select>
+
+        <span class="mt-badge mt-badge--scenario" id="badge-synthetic">
+          <span class="mt-dot" aria-hidden="true"></span>
+          SYNTHETIC TEST INPUT
+        </span>
+
+        <span class="mt-badge mt-badge--live" id="badge-api" role="status" aria-live="polite">
+          <span class="mt-dot" aria-hidden="true"></span>
+          Mock API Ready
+        </span>
+
+        <button type="button" class="mt-btn mt-drawer-trigger" id="btn-open-right" aria-expanded="false" aria-controls="rail-right">
+          Impact Lens
+        </button>
+      </div>
+    </header>
+
+    <!-- HONESTY & MODEL STATUS BANNERS -->
+    <section class="mt-banner-strip" aria-label="Model and data notices" id="banner-strip">
+      <div class="mt-banner mt-banner--synthetic">
+        <strong>SYNTHETIC TEST INPUT:</strong>
+        <span>All fields, charts, and metrics below are deterministic sandbox mock fixtures matching <code>DASHBOARD_API.md</code> shapes — not live model predictions.</span>
+      </div>
+      <div id="model-banner-slot"></div>
+    </section>
+
+    <!-- DRAWER BACKDROP (< 1200px) -->
+    <div class="mt-drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+
+    <!-- MAIN 3-COLUMN WORKSPACE -->
+    <div class="mt-workspace">
+      <!-- LEFT RAIL: SCENARIO & SHOCK BUILDER -->
+      <aside class="mt-rail mt-rail--left" id="rail-left" aria-label="Scenario builder">
+        <div class="mt-section-head">
+          <h2 class="mt-section-title">1. Case &amp; Scenario</h2>
+          <button type="button" class="mt-btn mt-btn--ghost mt-drawer-close" data-close-drawer="left" aria-label="Close scenario drawer">✕</button>
+        </div>
+
+        <div class="mt-field-group">
+          <label class="mt-label" for="case-select">Initial State (3-day window)</label>
+          <select id="case-select" class="mt-select">
+            <option value="synth-july">SYNTHETIC: July Monsoon Case (Day 0)</option>
+            <option value="synth-onset">SYNTHETIC: June Onset Case (Day 0)</option>
+          </select>
+        </div>
+
+        <div class="mt-field-group">
+          <span class="mt-label">2. Shock Presets (Client-side delta)</span>
+          <button type="button" class="mt-btn mt-btn--scenario" data-preset="monsoon_stall">
+            Monsoon Stall (AS u10/v10 −40%)
+          </button>
+          <button type="button" class="mt-btn" data-preset="warm_bay">
+            Warm Bay of Bengal (t2m +3K, tcwv +15%)
+          </button>
+        </div>
+
+        <div class="mt-field-group">
+          <label class="mt-label" for="brush-radius">3. Custom Brush Radius: <span class="mt-mono" id="brush-radius-val">3</span> cells</label>
+          <input id="brush-radius" class="mt-range" type="range" min="1" max="8" value="3">
+        </div>
+
+        <div class="mt-field-group">
+          <span class="mt-label">4. Simulation Queue (Sequential)</span>
+          <button type="button" class="mt-btn mt-btn--primary" id="btn-run-sim">
+            ▶ Run Sandbox Rollout (10d)
+          </button>
+        </div>
+
+        <div class="mt-field-group" aria-label="Keyboard shortcuts">
+          <span class="mt-label">Keyboard Shortcuts</span>
+          <div class="mt-impact-meta">
+            <span><kbd class="mt-kbd">←</kbd>/<kbd class="mt-kbd">→</kbd> Day</span>
+            <span><kbd class="mt-kbd">Space</kbd> Play</span>
+            <span><kbd class="mt-kbd">1</kbd>–<kbd class="mt-kbd">5</kbd> Channel</span>
+            <span><kbd class="mt-kbd">B</kbd>/<kbd class="mt-kbd">S</kbd>/<kbd class="mt-kbd">D</kbd> View</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: MAP STAGE -->
+      <main class="mt-stage" id="mt-main-stage" tabindex="-1">
+        <div class="mt-stage-toolbar">
+          <div class="mt-tabs" role="tablist" aria-label="Forecast view mode">
+            <button type="button" class="mt-tab" role="tab" aria-selected="true" data-view="baseline">Baseline</button>
+            <button type="button" class="mt-tab mt-tab--scenario" role="tab" aria-selected="false" data-view="scenario">Scenario</button>
+            <button type="button" class="mt-tab mt-tab--scenario" role="tab" aria-selected="false" data-view="difference">Difference (S − B)</button>
+          </div>
+
+          <div class="mt-tabs" role="tablist" aria-label="Weather channel">
+            <button type="button" class="mt-tab" role="tab" aria-selected="false" data-channel="t2m">1 Temp</button>
+            <button type="button" class="mt-tab" role="tab" aria-selected="true" data-channel="tp">2 Rain</button>
+            <button type="button" class="mt-tab" role="tab" aria-selected="false" data-channel="wind">3 Wind</button>
+            <button type="button" class="mt-tab" role="tab" aria-selected="false" data-channel="msl">4 Pressure</button>
+            <button type="button" class="mt-tab" role="tab" aria-selected="false" data-channel="tcwv">5 Moisture</button>
+          </div>
+        </div>
+
+        <div class="mt-map-frame">
+          <canvas id="sandbox-map" class="mt-map-grid" width="36" height="32" aria-label="1-degree synthetic weather field"></canvas>
+          <div class="mt-map-overlay">
+            <div class="mt-map-hud">
+              <span class="mt-hud-chip mt-mono" id="hud-view-label">VIEW: BASELINE · tp (mm/day)</span>
+              <span class="mt-hud-chip mt-mono" id="hud-grid-label">32×36 · 1° crisp cells · SYNTHETIC</span>
+            </div>
+            <div class="mt-map-hud">
+              <span class="mt-hud-chip mt-mono" id="hud-cell-readout">Cell (18.5°N, 76.5°E) · Synthetic fixture</span>
+              <span class="mt-hud-chip mt-mono" id="hud-day-badge">Day 1 / 10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend (rendered by ui/legend.js) -->
+        <div id="sandbox-legend"></div>
+
+        <!-- Timeline Scrubber -->
+        <div class="mt-timeline">
+          <button type="button" class="mt-btn" id="btn-play" aria-label="Play or pause rollout">▶ Play</button>
+          <label class="mt-sr-only" for="day-slider">Forecast Lead Day</label>
+          <input id="day-slider" class="mt-range" type="range" min="1" max="10" value="1">
+          <span class="mt-mono" id="day-label" style="min-width: 72px; text-align: right;">Day 1/10</span>
+        </div>
+      </main>
+
+      <!-- RIGHT RAIL: MONSOON IMPACT LENS -->
+      <aside class="mt-rail mt-rail--right" id="rail-right" aria-label="Monsoon Impact Lens">
+        <div class="mt-section-head">
+          <h2 class="mt-section-title">Monsoon Impact Lens</h2>
+          <button type="button" class="mt-btn mt-btn--ghost mt-drawer-close" data-close-drawer="right" aria-label="Close impact lens drawer">✕</button>
+        </div>
+
+        <div id="impact-list"></div>
+      </aside>
+    </div>
+
+    <!-- BOTTOM DOCK: DEPENDENCY-FREE SVG CHARTS & RUN LOG -->
+    <section class="mt-dock" aria-label="Diagnostic charts and run log">
+      <div class="mt-chart-box">
+        <div class="mt-section-head">
+          <h2 class="mt-section-title">Cell Time Series (Synthetic Mock)</h2>
+          <span class="mt-mono" style="font-size: 12px; color: var(--mt-text-muted);">18.5°N, 76.5°E · mm/day</span>
+        </div>
+        <div id="svg-series-slot"></div>
+      </div>
+
+      <div class="mt-chart-box">
+        <div class="mt-section-head">
+          <h2 class="mt-section-title">Shock Energy vs Distance (Synthetic Mock)</h2>
+          <span class="mt-mono" style="font-size: 12px; color: var(--mt-text-muted);">Locality metric · cells</span>
+        </div>
+        <div id="svg-energy-slot"></div>
+      </div>
+
+      <div class="mt-run-log mt-mono">
+        <span id="run-log-model">model: placeholder-persistence · mode: persistence · card: null</span>
+        <span id="run-log-timing">steps: 10 · inference_ms: 0.0 (synthetic fixture) · queue: idle</span>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { renderLegend } from "./js/ui/legend.js";
+    import { renderSeries } from "./js/ui/charts.js";
+    import { renderEnergyByDistance } from "./js/ui/energy.js";
+    import { renderImpactCards } from "./js/ui/impact.js";
+    import { renderModelBanner } from "./js/ui/model-banner.js";
+
+    /* Deterministic synthetic API-shaped fixtures (never live predictions) */
+    const LAT = Array.from({ length: 32 }, (_, i) => 6.5 + i);
+    const LON = Array.from({ length: 36 }, (_, j) => 65.5 + j);
+
+    const MOCK_META = {
+      grid: { lat: LAT, lon: LON },
+      channels: [
+        { name: "t2m", unit: "K" },
+        { name: "tp", unit: "mm/day" },
+        { name: "u10", unit: "m/s" },
+        { name: "v10", unit: "m/s" },
+        { name: "msl", unit: "Pa" },
+        { name: "tcwv", unit: "kg/m²" }
+      ],
+      channel_std: [13.4636, 7.5533, 2.8990, 2.4270, 619.0198, 20.4944],
+      land_sea_mask: null,
+      orography_m: null,
+      model: { name: "placeholder-persistence", mode: "persistence", validated: false, card: null }
+    };
+
+    const CHANNEL_META = {
+      t2m:  { channel: "2m Temperature (t2m)", unit: "°C", min: 18, max: 38, ramp: "thermal" },
+      tp:   { channel: "Precipitation (tp)", unit: "mm/day", min: 0, max: 115, ramp: "rain", bins: [0, 1, 2.5, 5, 10, 20, 35, 65, 115] },
+      wind: { channel: "10m Wind Speed", unit: "m/s", min: 0, max: 16, ramp: "speed" },
+      msl:  { channel: "Sea-Level Pressure (msl)", unit: "hPa", min: 998, max: 1016, ramp: "dense" },
+      tcwv: { channel: "Column Water Vapour (tcwv)", unit: "kg/m²", min: 15, max: 75, ramp: "haline" },
+      diff: { channel: "Scenario − Baseline", unit: "Δ", min: -10, max: 10, ramp: "balance", symmetric: true }
+    };
+
+    const MOCK_INDICATORS = [
+      {
+        id: "monsoon_break",
+        label: "Monsoon Break Watch",
+        value: "−0.82",
+        unit: "σ (SYNTHETIC)",
+        status: "watch",
+        isProxy: true,
+        baseline: "−0.15σ",
+        scenario: "−0.82σ",
+        delta: "−0.67σ",
+        note: "Core monsoon zone (18–28°N, 65–88°E) daily rain anomaly / DOY std; break at ≤ −1.0σ for ≥ 3 consecutive days (Rajeevan et al.).",
+        limitation: "ERA5 1° grid means differ from IMD gridded rain; 10-day horizon flags onset only."
+      },
+      {
+        id: "heavy_rain",
+        label: "Heavy-Rain Hazard Days",
+        value: 2,
+        unit: "days",
+        status: "scenario",
+        isProxy: true,
+        baseline: "3d",
+        scenario: "2d",
+        delta: "−1d",
+        note: "Count of days per cell with grid-mean tp ≥ 10 mm/day (scorer) or ≥ 64.5 mm/day (IMD reference).",
+        limitation: "Grid means rarely reach station extremes; hazard proxy, not flood risk."
+      },
+      {
+        id: "heat_anomaly",
+        label: "Heat-Anomaly Days",
+        value: 0,
+        unit: "days",
+        status: "normal",
+        isProxy: true,
+        note: "Days with daily-mean t2m − climatology ≥ +3 K / +5 K.",
+        limitation: "Not an IMD heatwave (IMD uses station daily Tmax; t2m is daily mean)."
+      }
+    ];
+
+    const state = {
+      modelState: "placeholder",
+      view: "baseline",
+      channel: "tp",
+      day: 1,
+      playing: false,
+      timer: null
+    };
+
+    const mapCanvas = document.getElementById("sandbox-map");
+    const ctx = mapCanvas.getContext("2d");
+
+    function colorForValue(t, view) {
+      if (view === "difference") {
+        const d = Math.max(-1, Math.min(1, t * 2 - 1));
+        if (d < 0) {
+          const k = -d;
+          return [Math.round(148 - 115 * k), Math.round(163 - 61 * k), Math.round(184 + 40 * k)];
+        }
+        return [Math.round(148 + 96 * d), Math.round(163 - 75 * d), Math.round(184 - 135 * d)];
+      }
+      const c = Math.max(0, Math.min(1, t));
+      return [
+        Math.round(14 + 210 * Math.pow(c, 1.4)),
+        Math.round(28 + 180 * c),
+        Math.round(52 + 145 * Math.sin(c * Math.PI * 0.75))
+      ];
+    }
+
+    function renderSyntheticField() {
+      const img = ctx.createImageData(36, 32);
+      const phase = state.day * 0.35;
+      const chShift = { t2m: 0.2, tp: 0.0, wind: 0.4, msl: 0.6, tcwv: 0.8 }[state.channel] || 0;
+      for (let r = 0; r < 32; r++) {
+        for (let c = 0; c < 36; c++) {
+          const y = (31 - r) / 31;
+          const x = c / 35;
+          const base = 0.5 + 0.35 * Math.sin(x * 4.2 + phase + chShift) * Math.cos(y * 3.6 - phase * 0.5);
+          const scenDelta = (x > 0.1 && x < 0.45 && y > 0.2 && y < 0.55) ? -0.22 * Math.exp(-state.day * 0.08) : 0.04;
+          const val = state.view === "baseline" ? base : state.view === "scenario" ? base + scenDelta : 0.5 + scenDelta * 2.2;
+          const [R, G, B] = colorForValue(val, state.view);
+          const idx = (r * 36 + c) * 4;
+          img.data[idx] = R;
+          img.data[idx + 1] = G;
+          img.data[idx + 2] = B;
+          img.data[idx + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function syncUI() {
+      const legendSlot = document.getElementById("sandbox-legend");
+      const bannerSlot = document.getElementById("model-banner-slot");
+      const seriesSlot = document.getElementById("svg-series-slot");
+      const energySlot = document.getElementById("svg-energy-slot");
+      const impactSlot = document.getElementById("impact-list");
+      const runLogModel = document.getElementById("run-log-model");
+
+      document.getElementById("hud-view-label").textContent = `VIEW: ${state.view.toUpperCase()} · ${state.channel}`;
+      document.getElementById("hud-day-badge").textContent = `Day ${state.day} / 10`;
+      document.getElementById("day-label").textContent = `Day ${state.day}/10`;
+      document.getElementById("day-slider").value = String(state.day);
+
+      document.querySelectorAll("[data-view]").forEach((btn) => {
+        btn.setAttribute("aria-selected", String(btn.dataset.view === state.view));
+      });
+      document.querySelectorAll("[data-channel]").forEach((btn) => {
+        btn.setAttribute("aria-selected", String(btn.dataset.channel === state.channel));
+      });
+
+      if (state.modelState === "malformed") {
+        renderModelBanner(bannerSlot, null, { climatologyAvailable: false });
+        renderLegend(legendSlot, null);
+        renderSeries(seriesSlot, { labels: [], series: [{ name: "Bad", values: [NaN, null] }], unit: "" });
+        renderEnergyByDistance(energySlot, {});
+        renderImpactCards(impactSlot, []);
+        runLogModel.textContent = "edge test: null/malformed payloads rendered safely";
+      } else {
+        const metaModel = state.modelState === "validated"
+          ? { name: "sandbox-mock-model", mode: "localnet", validated: true, card: null }
+          : MOCK_META.model;
+
+        renderModelBanner(bannerSlot, metaModel, {
+          climatologyAvailable: state.modelState !== "clim503"
+        });
+
+        const legSpec = state.view === "difference" ? CHANNEL_META.diff : CHANNEL_META[state.channel];
+        renderLegend(legendSlot, legSpec, { bins: legSpec.bins, symmetric: legSpec.symmetric });
+
+        const days = Array.from({ length: 10 }, (_, i) => `D${i + 1}`);
+        const baseVals = days.map((_, i) => 12 + 4 * Math.sin((i + 1) * 0.65));
+        const scenVals = days.map((_, i) => baseVals[i] - 3.2 * Math.exp(-(i + 1) * 0.15));
+        renderSeries(seriesSlot, {
+          labels: days,
+          unit: "mm/day",
+          series: [
+            { name: "Baseline", values: baseVals, lower: baseVals.map((v) => v - 1.2), upper: baseVals.map((v) => v + 1.2) },
+            { name: "Scenario", values: scenVals }
+          ]
+        }, { activeIndex: state.day - 1 });
+
+        renderEnergyByDistance(energySlot, {
+          distances: [0, 2, 4, 6, 8, 10, 12, 14],
+          baseline: [0.05, 0.04, 0.03, 0.02, 0.01, 0.01, 0.0, 0.0],
+          scenario: [1.0, 0.72, 0.44, 0.21, 0.08, 0.02, 0.0, 0.0]
+        }, { unit: "norm." });
+
+        renderImpactCards(impactSlot, MOCK_INDICATORS);
+
+        runLogModel.textContent = state.modelState === "clim503"
+          ? `model: ${metaModel.name} · climatology: 503 unavailable · card: null`
+          : `model: ${metaModel.name} · mode: ${metaModel.mode} · card: null`;
+      }
+
+      renderSyntheticField();
+    }
+
+      /* Drawer management (< 1200px) */
+      const railLeft = document.getElementById("rail-left");
+      const railRight = document.getElementById("rail-right");
+      const backdrop = document.getElementById("drawer-backdrop");
+      const btnOpenLeft = document.getElementById("btn-open-left");
+      const btnOpenRight = document.getElementById("btn-open-right");
+
+      function closeDrawers() {
+        railLeft.classList.remove("is-open");
+        railRight.classList.remove("is-open");
+        backdrop.classList.remove("is-visible");
+        btnOpenLeft.setAttribute("aria-expanded", "false");
+        btnOpenRight.setAttribute("aria-expanded", "false");
+      }
+
+      btnOpenLeft.addEventListener("click", () => {
+        closeDrawers();
+        railLeft.classList.add("is-open");
+        backdrop.classList.add("is-visible");
+        btnOpenLeft.setAttribute("aria-expanded", "true");
+      });
+
+      btnOpenRight.addEventListener("click", () => {
+        closeDrawers();
+        railRight.classList.add("is-open");
+        backdrop.classList.add("is-visible");
+        btnOpenRight.setAttribute("aria-expanded", "true");
+      });
+
+      backdrop.addEventListener("click", closeDrawers);
+      document.querySelectorAll("[data-close-drawer]").forEach((btn) => btn.addEventListener("click", closeDrawers));
+
+      /* Controls & Keyboard Shortcuts */
+      document.getElementById("sandbox-state-select").addEventListener("change", (e) => {
+        state.modelState = e.target.value;
+        syncUI();
+      });
+
+      document.getElementById("brush-radius").addEventListener("input", (e) => {
+        document.getElementById("brush-radius-val").textContent = e.target.value;
+      });
+
+      document.getElementById("day-slider").addEventListener("input", (e) => {
+        state.day = Number(e.target.value);
+        syncUI();
+      });
+
+      function togglePlay() {
+        state.playing = !state.playing;
+        document.getElementById("btn-play").textContent = state.playing ? "❚❚ Pause" : "▶ Play";
+        if (state.playing) {
+          state.timer = setInterval(() => {
+            state.day = state.day >= 10 ? 1 : state.day + 1;
+            syncUI();
+          }, 400);
+        } else {
+          clearInterval(state.timer);
+        }
+      }
+
+      document.getElementById("btn-play").addEventListener("click", togglePlay);
+      document.getElementById("btn-run-sim").addEventListener("click", () => {
+        state.day = 1;
+        syncUI();
+      });
+
+      document.querySelectorAll("[data-view]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.view = btn.dataset.view;
+          syncUI();
+        });
+      });
+
+      document.querySelectorAll("[data-channel]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.channel = btn.dataset.channel;
+          syncUI();
+        });
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+        if (e.key === "ArrowRight") { state.day = Math.min(10, state.day + 1); syncUI(); }
+        else if (e.key === "ArrowLeft") { state.day = Math.max(1, state.day - 1); syncUI(); }
+        else if (e.key === " ") { e.preventDefault(); togglePlay(); }
+        else if (["1", "2", "3", "4", "5"].includes(e.key)) {
+          state.channel = ["t2m", "tp", "wind", "msl", "tcwv"][Number(e.key) - 1];
+          syncUI();
+        }
+        else if (e.key.toLowerCase() === "b") { state.view = "baseline"; syncUI(); }
+        else if (e.key.toLowerCase() === "s") { state.view = "scenario"; syncUI(); }
+        else if (e.key.toLowerCase() === "d") { state.view = "difference"; syncUI(); }
+        else if (e.key === "Escape") {
+          closeDrawers();
+          document.querySelectorAll("details.mt-method-details[open]").forEach((d) => { d.open = false; });
+        }
+      });
+
+      syncUI();
+  </script>
+</body>
+</html>
