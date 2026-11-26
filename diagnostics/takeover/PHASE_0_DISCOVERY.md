@@ -1,6 +1,6 @@
 # Phase 0: discovery and safe environment
 
-27 Nov 2026, 00:28–00:55 IST. Deadline: 10:00 IST the same day.
+27 Nov 2026, 00:28–00:35 IST. Deadline: 10:00 IST the same day.
 
 ## 1. Authority
 CLAUDE.md §1 limits each session to one workstream. The project owner has instructed that W1, W2 and W3 have stopped development and that this takeover covers all three, inside the integration worktree only. This is recorded here so the departure from §1 is explicit. All other CLAUDE.md rules still apply. Not authorised: push, merge to `main`, force-push, branch deletion, changes to the original W1 workspace or the frozen windows, training, or activating LocalNet without approval.
