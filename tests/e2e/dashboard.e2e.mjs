@@ -17,6 +17,8 @@ try {
   const load = async () => {
     await b.goto(`${url(WEB)}/index.html`);
     await b.waitFor(async () => (await b.text("api-status-text")).startsWith("Ready"), "connection");
+    // The expected values below are computed from the synthetic input, so the page must show that input too.
+    await b.eval(`(() => { const s = document.getElementById("case-select"); s.value = "synthetic"; s.dispatchEvent(new Event("change")); })()`);
   };
   const run = async (preset = "warm_ocean") => { await b.click(`[data-preset-id="${preset}"]`); await b.click("#run-btn"); await sleep(250); await idle(); };
 
