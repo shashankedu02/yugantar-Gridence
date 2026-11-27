@@ -138,6 +138,8 @@ python3 -m venv .venv
 ```
 For a smaller CPU-only PyTorch on Linux, first run `.venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu`.
 
+**Windows long paths:** PyTorch contains very long file names. If `pip` fails with `OSError: [Errno 2] No such file or directory` inside `torch\include`, clone into a short folder (for example `C:\g`) or enable Windows long-path support, then install again.
+
 We have run these steps on Windows only. **Linux and macOS are untested.**
 
 ## 11. Start the backend and the dashboard
