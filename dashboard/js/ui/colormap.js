@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Shared Colour Mapping
+ * Gridence UI Module — Shared Colour Mapping
  * Single source of truth for map canvas and renderLegend().
  * Pure, colour-blind-safe palettes. No external dependencies.
  */

@@ -1,8 +1,10 @@
 /**
- * MonsoonTwin UI Module — Model Status & Honesty Banner
+ * Gridence UI Module — Model Status & Honesty Banner
  * Contract: renderModelBanner(el, model, options?)
  * Pure presentational ES module. Enforces DASHBOARD_API.md §5 notices.
  */
+
+import { modelLabel } from "../copy.js";
 
 /**
  * Render model status, placeholder notice, and validation badge into `el`.
@@ -11,6 +13,7 @@
  * @param {{climatologyAvailable?: boolean}} [options]
  */
 export function renderModelBanner(el, model, options = {}) {
+  // (the exact server ID stays available as a tooltip)
   if (!(el instanceof Element)) return;
   el.innerHTML = "";
 
@@ -53,7 +56,8 @@ export function renderModelBanner(el, model, options = {}) {
     msg.append(strong, document.createTextNode("the last day repeated. Not a model."));
   } else {
     const strong = document.createElement("strong");
-    strong.textContent = modelName;
+    strong.textContent = modelLabel(modelName);
+    strong.title = `Server model ID: ${modelName}`;
     msg.append(strong, document.createTextNode(model.mode ? ` · mode: ${model.mode}` : ""));
   }
 

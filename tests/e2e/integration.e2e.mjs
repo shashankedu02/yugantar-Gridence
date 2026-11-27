@@ -3,7 +3,7 @@
 import { checker, dapFallbackTree, openBrowser, placeholderTree, sleep, startApi, startMislabellingProxy, startWeb, stop } from "./harness.mjs";
 
 const API = 8131, PLACEHOLDER = 8132, PROXY = 8133, FALLBACK = 8134, DEAD = 8139, WEB = 5531;
-const MODEL = "monsoontwin-localnet-c64-unvalidated", DAP_MODEL = "monsoontwin-dap-unvalidated";
+const MODEL = "LocalNet C64 (unvalidated)", DAP_MODEL = "DAP (unvalidated)"; // names as shown on screen
 const url = (p) => `http://127.0.0.1:${p}`;
 const t = checker();
 let api = await startApi(API);
@@ -88,7 +88,7 @@ try {
     "damaged checkpoint: status and banner say DAP", await b.text("model-banner"));
   b.resetLog(); await b.click('[data-preset-id="warm_ocean"]'); await run();
   const line = await b.text("result-provenance");
-  t.ok(line.includes(DAP_MODEL) && !line.includes("localnet"), "damaged checkpoint: the result is labelled DAP", line);
+  t.ok(line.includes(DAP_MODEL) && !/localnet/i.test(line), "damaged checkpoint: the result is labelled DAP", line);
   t.ok((await b.eval(`document.querySelector('#impact-container [data-indicator-id="core-rain"] .mt-popover').textContent`)).includes("cannot change rain"),
     "under DAP the card still explains that this shock cannot change rain");
   t.ok((await b.text("run-log")).includes(DAP_MODEL), "the run log records DAP");
@@ -96,7 +96,7 @@ try {
   // dead server
   await connect(DEAD);
   t.ok((await b.text("api-status-text")) === "Offline", "status is Offline");
-  t.ok(!(await b.text("model-banner")).includes("monsoontwin") && !(await b.text("model-banner")).includes("Not a model"), "no model identity is shown while offline", await b.text("model-banner"));
+  t.ok(!/localnet|dap|monsoontwin/i.test(await b.text("model-banner")) && !(await b.text("model-banner")).includes("Not a model"), "no model identity is shown while offline", await b.text("model-banner"));
   t.ok(!(await dayEnabled()), "no forecast is shown while offline");
   await connect(API);
   t.ok((await b.errorText()) === "", "reconnecting clears the error");

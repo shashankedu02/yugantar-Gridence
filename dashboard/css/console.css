@@ -1,4 +1,4 @@
-/* MonsoonTwin console. One stylesheet for index.html. System fonts only: the dashboard runs offline.
+/* Gridence console. One stylesheet for index.html. System fonts only: the dashboard runs offline.
    (ui-sandbox.html keeps the older tokens.css, layout.css and components.css.) */
 
 :root {
@@ -39,6 +39,7 @@ code, .mt-mono { font-family: var(--mono); font-size: 12px; }
 a { color: var(--accent); }
 .hidden, [hidden] { display: none !important; }
 .mt-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mt-wordmark { text-transform: uppercase; letter-spacing: 0.12em; }
 .mt-hint { color: var(--muted); font-size: 12px; line-height: 1.4; }
 #run-hint.is-warning { color: #fde68a; font-weight: 600; }
 .mt-muted { color: var(--muted); }
@@ -298,9 +299,7 @@ dialog .mt-btn-primary { margin-top: 14px; }
   .mt-workspace { grid-template-columns: 262px minmax(0, 1fr) 286px; gap: 10px; padding: 10px; }
   .mt-map-side { width: 128px; }
   .mt-variables small { display: none; }
-}
-@media (max-width: 1380px) {
-  .mt-brand p { display: none; }
+  .mt-brand p { font-size: 11.5px; }
 }
 @media (max-width: 1180px) {
   .mt-workspace { grid-template-columns: 262px minmax(0, 1fr); height: auto; }

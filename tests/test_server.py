@@ -1,7 +1,7 @@
 """End-to-end HTTP tests: start `python serve.py` as a subprocess (the way the judge does) and call it.
 
 Needs fastapi and uvicorn (requirements-serve.txt); skipped otherwise. The official kit validator is exercised
-separately (see DEVELOPMENT.md), and by test_kit_validator when the kit package is importable.
+separately (see README.md), and by test_kit_validator when the kit package is importable.
 """
 import base64
 import socket

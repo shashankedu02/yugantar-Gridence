@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Colour Legend
+ * Gridence UI Module — Colour Legend
  * Contract: renderLegend(el, data, options?)
  * Uses the same colour mapping as the map (./colormap.js). Every label is positioned at the exact place on the bar
  * where its value is drawn: for rain, at the boundary between two colour bands.

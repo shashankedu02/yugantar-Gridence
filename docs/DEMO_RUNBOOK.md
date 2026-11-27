@@ -1,12 +1,12 @@
-# Demo runbook (current build)
+# Gridence demo runbook
 
-This describes what the current build does. `DEMO_AND_JUDGING.md` is an earlier plan and mentions features that were not built (ensemble, split view, wind particles, break index): do not promise them.
+**Gridence — AI-Powered Monsoon Forecasting and Climate Scenario Intelligence.** This describes what the current build does. There is no ensemble, split view, wind animation or monsoon-break index: do not promise them.
 
 ## Before the demo
 1. Free port 8000. On Windows: `Get-NetTCPConnection -LocalPort 8000 -State Listen` shows the owning process; make sure it is not an old server.
 2. Terminal 1: `python serve.py --port 8000`.
 3. Terminal 2: `python -m http.server 5500 -d dashboard`, then open <http://localhost:5500> and press **Ctrl+F5** (the simple file server lets the browser keep old files after an update).
-4. Check the **Model answering** card at the top right says **monsoontwin-localnet-c64-unvalidated · mode: localnet** (the header shortens long names). If it says DAP, LocalNet did not load: read the reason in terminal 1 (usually `torch` is missing).
+4. Check the **Model answering** card at the top right says **LocalNet C64 (unvalidated) · mode: localnet**. The server's own ID for it, `monsoontwin-localnet-c64-unvalidated` (an internal identifier kept from the project's earlier name), is listed under **Technical details** at the bottom of the page. If the card says DAP, LocalNet did not load: read the reason in terminal 1 (usually `torch` is missing).
 5. Turn Wi-Fi off and reload the page. Everything must still work.
 6. Record a backup screen capture of the steps below, from live calls.
 
@@ -14,7 +14,7 @@ This describes what the current build does. `DEMO_AND_JUDGING.md` is an earlier 
 1. **First screen:** say what it shows: real weather on the last input day, labelled "not a forecast". Click two variable buttons to show it responds.
 2. **Run:** with "Active monsoon" and no shock, press **Run forecast**. Point at the line above the map naming the model.
 3. **Time and cells:** press **Play**, then use the arrow buttons beside it or the slider. Point at the map to read a cell. Pick a city under **Cell inspector** to chart it against climatology.
-4. **Official shock:** change the case to **Weak monsoon spell** and click **Warm Bay of Bengal**. The map previews what the shock adds. Run, then open **Difference**. Step from day 1 to day 8 and read the energy chart caption: how much of the response is outside the shocked area. Say why you changed case: on "Active monsoon" neither official shock spreads by the organisers' check (see the table below).
+4. **Official shock:** change the case to **Weak monsoon spell** and click **Warm Bay of Bengal**. The map previews what the shock adds. Press **Run Baseline + Scenario**; the map stays on Baseline, so click **Scenario**, then **Difference**. Step from day 1 to day 8 and read the energy chart caption: how much of the response is outside the shocked area. Say why you changed case: on "Active monsoon" neither official shock spreads by the organisers' check (see the table below).
 5. **A judge's shock:** open **Custom shock**; choose variable, size and shape; for a blob use *Pick centre on map*. **Add to shock** → **Run** → **Difference**. Several components can be added; a custom shock replaces an official one. Pick another shock only when you are ready to run again: it removes the scenario on screen.
 6. **Impact Lens:** read baseline, scenario and change; look at the daily chart, not only the total; open one "ⓘ method" and read the limitation aloud.
 

@@ -9,6 +9,16 @@ export const VARIABLES = Object.freeze([
   { name: "Moisture", help: "Water vapour in the whole air column above each cell." },
 ]);
 
+/**
+ * Readable name of a model for the screen. Only the two known server IDs are shortened; anything else, including an
+ * unexpected or altered ID, is shown exactly as the server sent it.
+ */
+export function modelLabel(id) {
+  const local = /^monsoontwin-localnet-c(\d+)-unvalidated$/.exec(id ?? "");
+  if (local) return `LocalNet C${local[1]} (unvalidated)`;
+  return id === "monsoontwin-dap-unvalidated" ? "DAP (unvalidated)" : String(id ?? "unknown");
+}
+
 export const UNIT_LABELS = Object.freeze({ "kg/m2": "kg/m²" });
 export const unitLabel = (u) => UNIT_LABELS[u] || u;
 

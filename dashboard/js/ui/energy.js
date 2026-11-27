@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Shock Energy vs Distance
+ * Gridence UI Module — Shock Energy vs Distance
  * Contract: renderEnergyByDistance(el, data, options?)
  * Pure presentational ES module using dependency-free SVG.
  * Strict null/undefined/NaN handling (never coerces missing to 0). Only the bars are <rect> elements.

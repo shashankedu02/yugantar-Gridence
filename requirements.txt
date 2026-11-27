@@ -1,0 +1,2 @@
+# Everything needed to run Gridence (server + dashboard). Training and test extras: requirements-train.txt
+-r requirements-serve.txt

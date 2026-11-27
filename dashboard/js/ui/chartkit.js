@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — small SVG chart helpers shared by the line and bar charts.
+ * Gridence UI Module — small SVG chart helpers shared by the line and bar charts.
  * Charts are drawn at their real pixel width, so text is never scaled below its stated size.
  */
 

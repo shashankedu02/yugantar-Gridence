@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Time Series Chart
+ * Gridence UI Module — Time Series Chart
  * Contract (dashboard/README.md):
  *   - renderSeries(el, data, options?)
  *   - renderEnergyByDistance(el, data, options?)

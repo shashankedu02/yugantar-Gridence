@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin dashboard application orchestrator.
+ * Gridence dashboard application orchestrator.
  * W2-owned module. Single entry point that wires all W2 modules and
  * dynamically imports W3 modules (dashboard/js/ui/) with clean fallbacks.
  *
@@ -38,7 +38,7 @@ import {
 } from "./render.js";
 import { differenceScale, valueScale } from "./scale.js";
 import { loadCoastline } from "./geo.js";
-import { CASE_NOTES, SHOCK_CARDS, VARIABLES, dateAfter, unitLabel } from "./copy.js";
+import { CASE_NOTES, SHOCK_CARDS, VARIABLES, dateAfter, modelLabel, unitLabel } from "./copy.js";
 import { CUSTOM_LIMITS } from "./scenario.js";
 
 // ---------------------------------------------------------------------------
@@ -189,7 +189,7 @@ function renderFallbackModelBanner(el, model) {
     el.appendChild(node("div", "mt-banner mt-banner-warn", "Placeholder forecast: the last day repeated. Not a model."));
   }
   el.appendChild(node("div", validated ? "mt-banner" : "mt-banner mt-banner-warn",
-    `model: ${model?.name ?? "unknown"} · ${validated ? "validated" : "Unvalidated"}`));
+    `model: ${modelLabel(model?.name)} · ${validated ? "validated" : "Unvalidated"}`));
 }
 
 function renderModelBannerEl(model) {
@@ -300,7 +300,8 @@ function renderMetaSummary(meta) {
   const std = Array.isArray(meta.channel_std) ? "6 channels" : "null";
   const card = meta.model?.card == null ? "null" : "present";
   const lines = [
-    `model: ${meta.model?.name ?? "unknown"} (${meta.model?.mode ?? "?"})`,
+    `model: ${modelLabel(meta.model?.name)} (${meta.model?.mode ?? "?"})`,
+    `server model ID: ${meta.model?.name ?? "unknown"}`,
     `validated: ${Boolean(meta.model?.validated)}`,
     `grid: ${meta.grid?.lat?.length ?? 0} lat × ${meta.grid?.lon?.length ?? 0} lon`,
     `channel_std: ${std}`,
@@ -1004,7 +1005,8 @@ function syncSyntheticBadge(state) {
 // ---------------------------------------------------------------------------
 function describeServed(served) {
   if (!served?.model) return "model not reported by the server";
-  return served.fallback ? `${served.model} (FALLBACK: ${served.fallback})` : served.model;
+  const name = modelLabel(served.model);
+  return served.fallback ? `${name} (FALLBACK: ${served.fallback})` : name;
 }
 
 function renderProvenance(state) {
@@ -1124,7 +1126,7 @@ async function connectAndLoadMeta() {
     store.setHealth(health);
     store.setMeta(meta);
     renderModelBannerEl(meta.model);
-    setStatus("ready", `Ready (${health.model_name})`);
+    setStatus("ready", `Ready (${modelLabel(health.model_name)})`);
     return true;
   } catch (err) {
     setStatus("error", err.kind === "timeout" ? "Timeout (15 s)" : "Offline");
@@ -1221,7 +1223,7 @@ async function runSimulation() {
     if (!comparable) warnings.push("The two forecasts are not comparable, so no difference is shown.");
     const reported = store.getState().meta?.model?.name;
     if (baseline.served.model && !baseline.served.fallback && reported && baseline.served.model !== reported) {
-      warnings.push(`The server's model changed since you connected (${reported} → ${baseline.served.model}). Press Connect.`);
+      warnings.push(`The server's model changed since you connected (${modelLabel(reported)} → ${modelLabel(baseline.served.model)}). Press Connect.`);
     }
     if (climatologyNote) warnings.push(climatologyNote);
     showNotice(warnings.join(" "));

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>MonsoonTwin: project brief</title>
+<title>Gridence: project brief</title>
 <style>
   @page { size: A4; margin: 11mm 12mm; }
   * { box-sizing: border-box; }
@@ -32,9 +32,9 @@
 <body>
 
 <section class="page">
-  <h1>MonsoonTwin: a live, offline digital twin of India's weather</h1>
+  <h1>Gridence — AI-Powered Monsoon Forecasting and Climate Scenario Intelligence</h1>
   <div class="sub">Yugaantar DevForge 2026 · Track 2 "Multiverse of Monsoon" · github.com/shashankedu02/yugantar-monsoon-kit</div>
-  <div class="usp"><b>USP: a twin you can interrogate and audit.</b> Pick real input days, paint a shock, and compare two live forecasts. Every result is labelled with the model that produced it, and known limits are stated next to the results. It runs offline on a laptop CPU: the slowest 10-day request we measured took 191 ms on 4 processors.</div>
+  <div class="usp"><b>USP: a live, offline digital twin of India's weather that you can interrogate and audit.</b> Pick real input days, paint a shock, and compare two live forecasts. Every result is labelled with the model that produced it, and known limits are stated next to the results. It runs offline on a laptop CPU: the slowest 10-day request we measured took 191 ms on 4 processors.</div>
 
   <h2>System architecture and technical approach</h2>
   <div class="flow">
@@ -82,13 +82,13 @@
 
   <div class="cols">
     <div>
-      <h2>MonsoonTwin Console</h2>
+      <h2>Gridence Console</h2>
       <ul>
         <li>Four real input cases chosen by fixed rules on the inputs; a synthetic input is clearly labelled.</li>
         <li>The organisers' two shocks (checked against their code), plus custom rectangle or smooth shocks on any variable, centred by clicking the map.</li>
-        <li>Baseline, scenario and symmetric difference maps; map and legend share one colour function; a coastline from the supplied land–sea mask.</li>
+        <li>Baseline, scenario and symmetric difference maps; map and legend share one colour function; a reference coastline (Natural Earth) that adds no detail to the 1° data.</li>
         <li>Per-cell series against climatology, and <b>shock energy against distance</b> from the shocked area, using the organisers' energy definition.</li>
-        <li>Runs are one snapshot: inputs lock, results appear only if all calls succeed, and stale results are removed. Keyboard operable.</li>
+        <li>Runs are one snapshot: inputs lock, results appear only if all calls succeed, and stale results are removed. Mouse and keyboard operable.</li>
       </ul>
     </div>
     <div>
@@ -112,7 +112,7 @@
     <li>Deterministic, no uncertainty estimate. Not for operational decisions.</li>
     <li>Every indicator is a proxy. Nothing pre-rendered is presented as a forecast by the console.</li>
   </ul>
-  <p class="sub">Data: Contains modified Copernicus Climate Change Service information (ERA5, Hersbach et al. 2020), via WeatherBench 2 (Rasp et al. 2024); ERA5 is licensed under CC BY 4.0. Neither the European Commission nor ECMWF is responsible for any use of this information. Dataset and scoring code: the organisers' yug-monsoon-kit.</p>
+  <p class="sub">Data: Contains modified Copernicus Climate Change Service information (ERA5, Hersbach et al. 2020), via WeatherBench 2 (Rasp et al. 2024); ERA5 is licensed under CC BY 4.0. Neither the European Commission nor ECMWF is responsible for any use of this information. Dataset and scoring code: the organisers' yug-monsoon-kit. Coastline: Natural Earth (public domain).</p>
 </section>
 </body>
 </html>

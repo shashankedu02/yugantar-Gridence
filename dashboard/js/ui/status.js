@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Status, Progress & Toast Presentation
+ * Gridence UI Module — Status, Progress & Toast Presentation
  * Pure presentational ES module. No fetch, no global state, no DOM outside el.
  */
 

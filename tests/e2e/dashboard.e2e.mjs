@@ -178,22 +178,9 @@ try {
   t.ok((await b.text("notice-text")).includes("<img"), "the hostile text is shown literally");
   t.ok(b.log.exceptions.length === 0, "no uncaught exceptions on the dashboard", b.log.exceptions.join(" | "));
 
-  // ---- W3 sandbox ------------------------------------------------------------------------------------------
-  b.resetLog(); await b.goto(`${url(WEB)}/ui-sandbox.html`);
-  await b.click('[data-view="baseline"]'); await b.click('[data-channel="tp"]'); await sleep(150);
-  const cells = await b.eval(`(() => { const d = document.getElementById("sandbox-map").getContext("2d").getImageData(0, 0, 36, 32).data; let clear = 0, faint = 0; for (let i = 3; i < d.length; i += 4) { if (d[i] === 0) clear++; else if (d[i] < 255) faint++; } return { clear, faint }; })()`);
-  t.ok(cells.clear === 20 && cells.faint === 0, "only the 20 missing cells show the missing pattern; dry cells are opaque", JSON.stringify(cells));
+  // ---- a colour range that does not exist is never made up --------------------------------------------------
   const legendNull = await b.eval(`(async () => { const m = await import("./js/ui/legend.js"); const e = document.createElement("div"); document.body.appendChild(e); m.renderLegend(e, { channel: "t2m", unit: "K", min: null, max: null, ramp: "thermal" }); const s = e.innerText; e.remove(); return s; })()`);
   t.ok(legendNull.includes("unavailable"), "a missing colour range is not invented", legendNull);
-  await b.viewport(1024, 768); await b.goto(`${url(WEB)}/ui-sandbox.html`);
-  let strays = 0;
-  for (let i = 0; i < 30; i++) { await b.key("Tab", "Tab", 9); strays += await b.eval(`document.activeElement.closest(".mt-rail:not(.is-open)") ? 1 : 0`); }
-  t.ok(strays === 0, "closed drawers are out of the tab order", String(strays));
-  await b.click("#btn-open-left"); await sleep(500);
-  t.ok(await b.eval(`!!document.activeElement.closest("#rail-left")`), "focus moves into an opened drawer");
-  await b.key("Escape", "Escape", 27); await sleep(400);
-  t.ok((await b.eval(`document.activeElement.id`)) === "btn-open-left", "Escape closes the drawer and returns focus");
-  t.ok(b.log.exceptions.length === 0 && b.log.console.length === 0, "sandbox console is clean", [...b.log.exceptions, ...b.log.console].join(" | "));
 } finally {
   await b.close(); proxy.close(); await stop(web); await stop(api);
 }

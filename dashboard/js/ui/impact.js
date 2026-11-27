@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin UI Module — Monsoon Impact Lens Cards
+ * Gridence UI Module — Monsoon Impact Lens Cards
  * Contract: renderImpactCards(el, indicators, options?)
  * Pure presentational ES module. Preserves proxy disclosures and the "method" popovers.
  * A change is shown without good/bad colouring: the numbers are model scenarios, not judgements.

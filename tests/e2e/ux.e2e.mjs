@@ -40,7 +40,7 @@ try {
   await load();
 
   console.log("-- first screen");
-  t.ok((await q(`document.querySelector(".mt-brand p").textContent`)).includes("compare"), "the header says what the product does");
+  t.ok((await q(`document.querySelector(".mt-brand p").textContent`)) === "AI-Powered Monsoon Forecasting and Climate Scenario Intelligence" && (await b.text("map-start")).includes("compare the forecasts"), "the header carries the tagline and the first screen says what to do");
   t.ok((await b.text("stage-text")).includes("not a forecast") && !(await q(`document.getElementById("map-badge").hidden`)), "the map shows the real input day, labelled not a forecast", await b.text("stage-text"));
   t.ok(await q(`!document.getElementById("map-start").classList.contains("hidden")`), "a getting-started card is shown");
   t.ok((await q(`document.querySelectorAll("#impact-container article").length`)) === 0, "no impact number is shown before a forecast");
@@ -69,7 +69,10 @@ try {
   t.ok(await q(`!document.getElementById("map-busy").classList.contains("hidden") && document.getElementById("run-btn").disabled`), "a loading state covers the map and the controls are locked");
   await idle(); await b.latency(0);
   t.ok(await q(`document.getElementById("map-busy").classList.contains("hidden") && document.getElementById("map-start").classList.contains("hidden") && document.getElementById("map-badge").hidden`), "after the run the loading, start and input labels are gone");
-  t.ok((await b.text("result-provenance")).includes("monsoontwin-localnet-c64-unvalidated"), "the forecast names the model");
+  t.ok((await b.text("result-provenance")).includes("LocalNet C64 (unvalidated)"), "the forecast names the model");
+  t.ok((await b.eval(`document.getElementById("meta-summary").textContent`)).includes("server model ID: monsoontwin-localnet-c64-unvalidated"), "the exact server model ID stays available");
+  const brand = await b.eval(`document.title + " | " + document.body.innerText.replace(/server model ID:.*$/gm, "")`);
+  t.ok(/^Gridence — AI-Powered Monsoon Forecasting and Climate Scenario Intelligence/.test(brand) && !/monsoon\s?-?twin/i.test(brand), "the page is branded Gridence and shows no old product name", brand.match(/.{0,30}monsoon\s?-?twin.{0,30}/i)?.[0] || "");
   t.ok((await b.text("day-date")).length > 6, "forecast days carry calendar dates", await b.text("day-date"));
 
   console.log("-- keyboard after mouse use");

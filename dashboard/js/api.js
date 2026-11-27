@@ -1,5 +1,5 @@
 /**
- * MonsoonTwin HTTP client with a strict one-at-a-time FIFO queue and 15 s timeout.
+ * Gridence HTTP client with a strict one-at-a-time FIFO queue and 15 s timeout.
  * W2-owned module. All server endpoints use POST per docs/DASHBOARD_API.md.
  */
 
