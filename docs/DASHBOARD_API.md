@@ -1,6 +1,6 @@
 # Dashboard API (server → dashboard)
 
-Owner: W1 (server). Consumers: W2, W3. Verified against `serve.py` by `tests/test_server.py`. Start the server with `python serve.py --port 8000`.
+The HTTP interface of `serve.py`, checked by `tests/test_server.py`. Start the server with `python serve.py --port 8000`.
 
 ## 1. General
 - Base URL default `http://localhost:8000`, configurable in the dashboard. Serve the dashboard from another port: `python -m http.server 5500 -d dashboard`. CORS is open.
@@ -48,8 +48,8 @@ No body. Called once at start-up.
 
 ## 5. What the UI must always show
 - `model.mode == "persistence"`: a visible banner "Placeholder forecast: the last day repeated. Not a model."
-- `model.validated == false`: a visible "Unvalidated" badge on every forecast view. It turns off only when W1 sets `"validated": true` in `weights/model_card.json` after the validation checkpoint passes.
-- Test inputs created in the browser (before demo cases exist) are labelled "SYNTHETIC TEST INPUT". Nothing pre-rendered is presented as a prediction.
+- `model.validated == false`: a visible "Unvalidated" badge on every forecast view. It turns off only if a `weights/model_card.json` sets `"validated": true`. The shipped package has no such file, so the badge stays on.
+- Test inputs created in the browser are labelled "SYNTHETIC TEST INPUT". Nothing pre-rendered is presented as a prediction.
 
 ## 6. `POST /climatology`
 ```json
