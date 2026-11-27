@@ -111,7 +111,7 @@ Optional keys: ← → day · Space play/pause · 1–6 variable · B S D view.
 - **Channels, in order:** `t2m` K, `tp` mm/day, `u10` m/s, `v10` m/s, `msl` Pa, `tcwv` kg/m². Physical units everywhere.
 - **Forecast input:** three consecutive days and `doy_sincos`, the sine and cosine of the day of year of the **last** input day (1 = 1 January; the contract does not state the base). `rollout[k]` is day k+1.
 - **Training data:** the organisers' `india_climate_train.nc` (ERA5-based), SHA-256 `f37bdbd0bd44e6fe951adf36c9a08620075f9d17de391b04c97d61f06797903b`. It is **not** in the repository and is not needed to run Gridence.
-- **Split:** network training 2005–2015; model choices 2016–2017; frozen validation 2018–2019; test years 2020–2021 **not used**.
+- **Split:** network training 2005–2015; model choices 2016–2017; frozen validation 2018–2019; test years 2020–2021 **not used**. A later audit evaluated the model on 2020–2021 ERA5 reanalysis data. These years were not used for training, model selection, or the originally published results, and the audit did not change the released model or checkpoint. The organisers' stats.json scaling statistics, which cover 2005–2021, were used in the published shock checks. They do not affect model training or forecasts.
 - **Included inputs:** [`dashboard/cases/`](dashboard/cases/) holds four real 3-day input states from 2018–2019 (inputs only, no targets or forecasts), chosen by fixed rules by `tools/make_demo_cases.py`. A clearly labelled synthetic input is also available. All forecasts are computed live.
 
 ### Models
@@ -176,15 +176,15 @@ Requires **Python 3.10 or newer** and Git. Internet is needed only to install pa
 
 **Windows (PowerShell)**
 ```powershell
-git clone https://github.com/shashankedu02/yugantar-monsoon-kit
-cd yugantar-monsoon-kit
+git clone https://github.com/shashankedu02/yugantar-Gridence
+cd yugantar-Gridence
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 **Linux or macOS**
 ```bash
-git clone https://github.com/shashankedu02/yugantar-monsoon-kit
-cd yugantar-monsoon-kit
+git clone https://github.com/shashankedu02/yugantar-Gridence
+cd yugantar-Gridence
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
